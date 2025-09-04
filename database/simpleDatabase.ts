@@ -33,7 +33,24 @@ export interface Worship {
   time: string;
   location: string;
   theme?: string;
+  preacher?: string;
   description?: string;
+  songs?: string[];
+  musicians?: string[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Musician {
+  id?: number;
+  name: string;
+  email: string;
+  phone: string;
+  type: 'chantre' | 'instrumentiste';
+  voiceType?: string;
+  instruments?: string[];
+  availability?: string[];
+  notes?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -46,11 +63,39 @@ export interface Communication {
   created_at?: string;
 }
 
+export interface Notification {
+  id?: number;
+  title: string;
+  message: string;
+  type: 'info' | 'urgent' | 'reminder' | 'success' | 'warning';
+  targetAudience: 'all' | 'musicians' | 'leaders' | 'active_members';
+  isScheduled: boolean;
+  scheduledDate?: string;
+  sent_at: string;
+  read: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Comment {
+  id?: number;
+  notificationId: number;
+  userId: string;
+  userName: string;
+  userRole?: string;
+  content: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 class SimpleDatabaseManager {
   private readonly SONGS_KEY = 'church_app_songs';
   private readonly TEAM_MEMBERS_KEY = 'church_app_team_members';
   private readonly COMMUNICATIONS_KEY = 'church_app_communications';
   private readonly WORSHIPS_KEY = 'church_app_worships';
+  private readonly MUSICIANS_KEY = 'church_app_musicians';
+  private readonly NOTIFICATIONS_KEY = 'church_app_notifications';
+  private readonly COMMENTS_KEY = 'church_app_comments';
 
   async init(): Promise<void> {
     try {
@@ -315,9 +360,12 @@ class SimpleDatabaseManager {
     try {
       const worshipsJson = await AsyncStorage.getItem(this.WORSHIPS_KEY);
       const worships = worshipsJson ? JSON.parse(worshipsJson) : [];
-      return worships.sort((a: Worship, b: Worship) => 
-        new Date(b.date + ' ' + b.time).getTime() - new Date(a.date + ' ' + a.time).getTime()
-      );
+      // Utiliser un format ISO pour un tri fiable
+      return worships.sort((a: Worship, b: Worship) => {
+        const bTime = new Date(`${b.date}T${b.time}`).getTime();
+        const aTime = new Date(`${a.date}T${a.time}`).getTime();
+        return bTime - aTime;
+      });
     } catch (error) {
       console.error('Erreur lors de la récupération des cultes:', error);
       return [];
@@ -359,13 +407,193 @@ class SimpleDatabaseManager {
     await AsyncStorage.setItem(this.WORSHIPS_KEY, JSON.stringify(filteredWorships));
   }
 
+  // CRUD Operations pour les musiciens
+  async getAllMusicians(): Promise<Musician[]> {
+    try {
+      const musiciansJson = await AsyncStorage.getItem(this.MUSICIANS_KEY);
+      return musiciansJson ? JSON.parse(musiciansJson) : [];
+    } catch (error) {
+      console.error('Erreur lors de la récupération des musiciens:', error);
+      return [];
+    }
+  }
+
+  async getMusicianById(id: number): Promise<Musician | null> {
+    const musicians = await this.getAllMusicians();
+    return musicians.find(musician => musician.id === id) || null;
+  }
+
+  async createMusician(musician: Omit<Musician, 'id' | 'created_at' | 'updated_at'>): Promise<number> {
+    const musicians = await this.getAllMusicians();
+    const newId = Math.max(...musicians.map(m => m.id || 0), 0) + 1;
+    const newMusician: Musician = {
+      ...musician,
+      id: newId,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    
+    musicians.push(newMusician);
+    await AsyncStorage.setItem(this.MUSICIANS_KEY, JSON.stringify(musicians));
+    return newId;
+  }
+
+  async updateMusician(id: number, musician: Partial<Omit<Musician, 'id' | 'created_at' | 'updated_at'>>): Promise<void> {
+    const musicians = await this.getAllMusicians();
+    const index = musicians.findIndex(m => m.id === id);
+    
+    if (index !== -1) {
+      musicians[index] = {
+        ...musicians[index],
+        ...musician,
+        updated_at: new Date().toISOString()
+      };
+      await AsyncStorage.setItem(this.MUSICIANS_KEY, JSON.stringify(musicians));
+    }
+  }
+
+  async deleteMusician(id: number): Promise<void> {
+    const musicians = await this.getAllMusicians();
+    const filteredMusicians = musicians.filter(musician => musician.id !== id);
+    await AsyncStorage.setItem(this.MUSICIANS_KEY, JSON.stringify(filteredMusicians));
+  }
+
+  // CRUD Operations pour les notifications
+  async getAllNotifications(): Promise<Notification[]> {
+    try {
+      const notificationsJson = await AsyncStorage.getItem(this.NOTIFICATIONS_KEY);
+      const notifications = notificationsJson ? JSON.parse(notificationsJson) : [];
+      return notifications.sort((a: Notification, b: Notification) => 
+        new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime()
+      );
+    } catch (error) {
+      console.error('Erreur lors de la récupération des notifications:', error);
+      return [];
+    }
+  }
+
+  async getNotificationById(id: number): Promise<Notification | null> {
+    const notifications = await this.getAllNotifications();
+    return notifications.find(notification => notification.id === id) || null;
+  }
+
+  async createNotification(notification: Omit<Notification, 'id' | 'created_at' | 'updated_at'>): Promise<number> {
+    const notifications = await this.getAllNotifications();
+    const newId = Math.max(...notifications.map(n => n.id || 0), 0) + 1;
+    const newNotification: Notification = {
+      ...notification,
+      id: newId,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    
+    notifications.unshift(newNotification);
+    await AsyncStorage.setItem(this.NOTIFICATIONS_KEY, JSON.stringify(notifications));
+    return newId;
+  }
+
+  async updateNotification(id: number, notification: Partial<Omit<Notification, 'id' | 'created_at' | 'updated_at'>>): Promise<void> {
+    const notifications = await this.getAllNotifications();
+    const index = notifications.findIndex(n => n.id === id);
+    
+    if (index !== -1) {
+      notifications[index] = {
+        ...notifications[index],
+        ...notification,
+        updated_at: new Date().toISOString()
+      };
+      await AsyncStorage.setItem(this.NOTIFICATIONS_KEY, JSON.stringify(notifications));
+    }
+  }
+
+  async deleteNotification(id: number): Promise<void> {
+    const notifications = await this.getAllNotifications();
+    const filteredNotifications = notifications.filter(notification => notification.id !== id);
+    await AsyncStorage.setItem(this.NOTIFICATIONS_KEY, JSON.stringify(filteredNotifications));
+    
+    // Supprimer aussi tous les commentaires associés
+    await this.deleteCommentsByNotificationId(id);
+  }
+
+  async markNotificationAsRead(id: number): Promise<void> {
+    await this.updateNotification(id, { read: true });
+  }
+
+  async markAllNotificationsAsRead(): Promise<void> {
+    const notifications = await this.getAllNotifications();
+    const updatedNotifications = notifications.map(n => ({ ...n, read: true, updated_at: new Date().toISOString() }));
+    await AsyncStorage.setItem(this.NOTIFICATIONS_KEY, JSON.stringify(updatedNotifications));
+  }
+
+  // CRUD Operations pour les commentaires
+  async getAllComments(): Promise<Comment[]> {
+    try {
+      const commentsJson = await AsyncStorage.getItem(this.COMMENTS_KEY);
+      return commentsJson ? JSON.parse(commentsJson) : [];
+    } catch (error) {
+      console.error('Erreur lors de la récupération des commentaires:', error);
+      return [];
+    }
+  }
+
+  async getCommentsByNotificationId(notificationId: number): Promise<Comment[]> {
+    const comments = await this.getAllComments();
+    return comments
+      .filter(comment => comment.notificationId === notificationId)
+      .sort((a, b) => new Date(b.created_at!).getTime() - new Date(a.created_at!).getTime());
+  }
+
+  async createComment(comment: Omit<Comment, 'id' | 'created_at' | 'updated_at'>): Promise<number> {
+    const comments = await this.getAllComments();
+    const newId = Math.max(...comments.map(c => c.id || 0), 0) + 1;
+    const newComment: Comment = {
+      ...comment,
+      id: newId,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    
+    comments.push(newComment);
+    await AsyncStorage.setItem(this.COMMENTS_KEY, JSON.stringify(comments));
+    return newId;
+  }
+
+  async updateComment(id: number, comment: Partial<Omit<Comment, 'id' | 'created_at' | 'updated_at'>>): Promise<void> {
+    const comments = await this.getAllComments();
+    const index = comments.findIndex(c => c.id === id);
+    
+    if (index !== -1) {
+      comments[index] = {
+        ...comments[index],
+        ...comment,
+        updated_at: new Date().toISOString()
+      };
+      await AsyncStorage.setItem(this.COMMENTS_KEY, JSON.stringify(comments));
+    }
+  }
+
+  async deleteComment(id: number): Promise<void> {
+    const comments = await this.getAllComments();
+    const filteredComments = comments.filter(comment => comment.id !== id);
+    await AsyncStorage.setItem(this.COMMENTS_KEY, JSON.stringify(filteredComments));
+  }
+
+  async deleteCommentsByNotificationId(notificationId: number): Promise<void> {
+    const comments = await this.getAllComments();
+    const filteredComments = comments.filter(comment => comment.notificationId !== notificationId);
+    await AsyncStorage.setItem(this.COMMENTS_KEY, JSON.stringify(filteredComments));
+  }
+
   // Méthodes utilitaires
   async clearAllData(): Promise<void> {
     await AsyncStorage.multiRemove([
       this.SONGS_KEY,
       this.TEAM_MEMBERS_KEY,
       this.COMMUNICATIONS_KEY,
-      this.WORSHIPS_KEY
+      this.WORSHIPS_KEY,
+      this.MUSICIANS_KEY,
+      this.NOTIFICATIONS_KEY,
+      this.COMMENTS_KEY
     ]);
   }
 }

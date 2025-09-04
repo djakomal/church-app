@@ -1,10 +1,11 @@
-import React from 'react';
-import { View, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { ThemedText } from './ThemedText';
-import { useThemeColor } from '@/hooks/useThemeColor';
 import { useAuth } from '@/context/AuthContext';
+import { useThemeColor } from '@/hooks/useThemeColor';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import React from 'react';
+import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ThemedText } from './ThemedText';
 
 interface ChurchSidebarProps {
   currentPage: string;
@@ -12,6 +13,7 @@ interface ChurchSidebarProps {
 }
 
 export function ChurchSidebar({ currentPage, onPageChange }: ChurchSidebarProps) {
+  const insets = useSafeAreaInsets();
   const backgroundColor = useThemeColor({}, 'lightGray');
   const activeBackgroundColor = useThemeColor({}, 'mediumGray');
   const textColor = useThemeColor({}, 'text');
@@ -65,33 +67,19 @@ export function ChurchSidebar({ currentPage, onPageChange }: ChurchSidebarProps)
     }
   };
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Déconnexion',
-      'Êtes-vous sûr de vouloir vous déconnecter ?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { 
-          text: 'Déconnecter', 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await logout();
-              // Forcer la redirection vers la page de connexion
-              router.replace('/');
-            } catch (error) {
-              console.error('Erreur lors de la déconnexion:', error);
-              // En cas d'erreur, forcer quand même la redirection
-              router.replace('/');
-            }
-          }
-        }
-      ]
-    );
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.replace('/login');
+    } catch (error) {
+      console.error('Erreur lors de la déconnexion:', error);
+      router.replace('/login');
+    }
   };
 
   return (
-    <View style={[styles.sidebar, { backgroundColor }]}>
+    <SafeAreaView style={{ flex: 1 }}>
+    <View style={[styles.sidebar, { backgroundColor, paddingTop: Math.max(8, insets.top) }]}> 
       {/* User info */}
       {user && (
         <View style={styles.userInfo}>
@@ -139,13 +127,14 @@ export function ChurchSidebar({ currentPage, onPageChange }: ChurchSidebarProps)
       </View>
 
       {/* Logout button */}
-      <TouchableOpacity style={styles.settingsItem} onPress={handleLogout}>
+      <TouchableOpacity style={styles.settingsItem} onPress={handleLogout} activeOpacity={0.7} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
         <Ionicons name="log-out" size={18} color={textColor} />
         <ThemedText style={[styles.menuText, { color: textColor }]}>
           Déconnexion
         </ThemedText>
       </TouchableOpacity>
     </View>
+    </SafeAreaView>
   );
 }
 

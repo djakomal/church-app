@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 
 export type UserRole = 'admin' | 'editor' | 'viewer';
 
@@ -31,6 +31,8 @@ interface AuthContextType {
   register: (data: RegisterData) => Promise<boolean>;
   logout: () => Promise<void>;
   hasPermission: (permission: keyof User['permissions']) => boolean;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<{ ok: boolean; reason?: string }>;
+  resetPassword: (email: string, newPassword: string) => Promise<{ ok: boolean; reason?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -152,6 +154,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
+      console.log('[Auth] Login attempt for', email);
       // Vérifier les utilisateurs enregistrés (incluant l'admin créé automatiquement)
       const registeredUsersData = await AsyncStorage.getItem(REGISTERED_USERS_KEY);
       if (registeredUsersData) {
@@ -159,12 +162,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const userRecord = registeredUsers[email.toLowerCase()];
         
         if (userRecord && userRecord.password === password) {
+          console.log('[Auth] Login success for', email);
           setUser(userRecord.user);
           await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userRecord.user));
           return true;
         }
       }
 
+      console.warn('[Auth] Login failed for', email);
       return false;
     } catch (error) {
       console.error('Erreur lors de la connexion:', error);
@@ -174,6 +179,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const register = async (data: RegisterData): Promise<boolean> => {
     try {
+      console.log('[Auth] Register attempt for', data.email);
       const registeredUsersData = await AsyncStorage.getItem(REGISTERED_USERS_KEY);
       const registeredUsers: Record<string, { user: User; password: string }> = registeredUsersData 
         ? JSON.parse(registeredUsersData) 
@@ -181,6 +187,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       // Vérifier si l'email existe déjà
       if (registeredUsers[data.email.toLowerCase()]) {
+        console.warn('[Auth] Register duplicate email', data.email);
         return false; // Email déjà utilisé
       }
 
@@ -200,6 +207,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
       };
 
       await AsyncStorage.setItem(REGISTERED_USERS_KEY, JSON.stringify(registeredUsers));
+      // Vérification lecture immédiate
+      const verify = await AsyncStorage.getItem(REGISTERED_USERS_KEY);
+      const parsed = verify ? JSON.parse(verify) : {};
+      const exists = !!parsed[data.email.toLowerCase()];
+      console.log('[Auth] Register write verification for', data.email, '=>', exists ? 'OK' : 'FAILED');
       return true;
     } catch (error) {
       console.error('Erreur lors de l\'inscription:', error);
@@ -227,6 +239,51 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return user?.permissions[permission] || false;
   };
 
+  const changePassword = async (
+    currentPassword: string,
+    newPassword: string
+  ): Promise<{ ok: boolean; reason?: string }> => {
+    try {
+      if (!user) return { ok: false, reason: 'not_authenticated' };
+      const registeredUsersData = await AsyncStorage.getItem(REGISTERED_USERS_KEY);
+      const registeredUsers: Record<string, { user: User; password: string }> = registeredUsersData
+        ? JSON.parse(registeredUsersData)
+        : {};
+      const record = registeredUsers[user.email.toLowerCase()];
+      if (!record) return { ok: false, reason: 'user_not_found' };
+      if (record.password !== currentPassword) return { ok: false, reason: 'wrong_password' };
+      if (newPassword.length < 6) return { ok: false, reason: 'weak_password' };
+      registeredUsers[user.email.toLowerCase()].password = newPassword;
+      await AsyncStorage.setItem(REGISTERED_USERS_KEY, JSON.stringify(registeredUsers));
+      return { ok: true };
+    } catch (e) {
+      console.error('Erreur changement de mot de passe:', e);
+      return { ok: false, reason: 'unknown' };
+    }
+  };
+
+  const resetPassword = async (
+    email: string,
+    newPassword: string
+  ): Promise<{ ok: boolean; reason?: string }> => {
+    try {
+      const normalized = email.toLowerCase().trim();
+      const registeredUsersData = await AsyncStorage.getItem(REGISTERED_USERS_KEY);
+      const registeredUsers: Record<string, { user: User; password: string }> = registeredUsersData
+        ? JSON.parse(registeredUsersData)
+        : {};
+      const record = registeredUsers[normalized];
+      if (!record) return { ok: false, reason: 'user_not_found' };
+      if (newPassword.length < 6) return { ok: false, reason: 'weak_password' };
+      registeredUsers[normalized].password = newPassword;
+      await AsyncStorage.setItem(REGISTERED_USERS_KEY, JSON.stringify(registeredUsers));
+      return { ok: true };
+    } catch (e) {
+      console.error('Erreur réinitialisation de mot de passe:', e);
+      return { ok: false, reason: 'unknown' };
+    }
+  };
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -234,7 +291,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       login,
       register,
       logout,
-      hasPermission
+      hasPermission,
+      changePassword,
+      resetPassword
     }}>
       {children}
     </AuthContext.Provider>

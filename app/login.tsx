@@ -1,20 +1,19 @@
+import { ThemedText } from '@/components/ThemedText';
+import { useAuth, UserRole } from '@/context/AuthContext';
+import { useThemeColor } from '@/hooks/useThemeColor';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { 
-  View, 
-  StyleSheet, 
-  TextInput, 
-  TouchableOpacity, 
+import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  ScrollView
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { ThemedText } from '@/components/ThemedText';
-import { useThemeColor } from '@/hooks/useThemeColor';
-import { useAuth, UserRole } from '@/context/AuthContext';
-import { router } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -42,7 +41,7 @@ export default function LoginScreen() {
     try {
       const success = await login(email.trim(), password);
       if (success) {
-        router.replace('/home');
+        router.replace('/(tabs)/home');
       } else {
         Alert.alert('Erreur', 'Email ou mot de passe incorrect');
       }
@@ -65,36 +64,7 @@ export default function LoginScreen() {
     setPassword(credentials.password);
   };
 
-  const handleClearData = async () => {
-    Alert.alert(
-      '🚨 Nettoyage des Données',
-      'Cette action va supprimer toutes les données de session et forcer la déconnexion. Continuer ?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { 
-          text: 'NETTOYER', 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              console.log('🚨 NETTOYAGE FORCÉ DES DONNÉES');
-              await AsyncStorage.removeItem('church_app_user');
-              console.log('✅ Données utilisateur supprimées');
-              
-              Alert.alert('✅ Succès', 'Données nettoyées. Vous pouvez maintenant vous connecter.');
-              
-              // Vider les champs
-              setEmail('');
-              setPassword('');
-              
-            } catch (error) {
-              console.error('❌ Erreur lors du nettoyage:', error);
-              Alert.alert('❌ Erreur', 'Impossible de nettoyer les données');
-            }
-          }
-        }
-      ]
-    );
-  };
+  // Nettoyage manuel supprimé selon demande
 
   return (
     <KeyboardAvoidingView 
@@ -199,35 +169,16 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Admin Info */}
+          {/* Admin Info (sans bouton de nettoyage) */}
           <View style={styles.adminInfo}>
-            <View style={[styles.adminCard, { backgroundColor, borderColor }]}>
+            <View style={[styles.adminCard, { backgroundColor, borderColor }]}> 
               <View style={styles.adminHeader}>
                 <Ionicons name="shield-checkmark" size={20} color={successColor} />
-                <ThemedText style={[styles.adminTitle, { color: textColor }]}>
-                  Compte Administrateur
-                </ThemedText>
+                <ThemedText style={[styles.adminTitle, { color: textColor }]}>Compte Administrateur</ThemedText>
               </View>
-              <ThemedText style={[styles.adminText, { color: secondaryColor }]}>
-                Email : admin@church.com
-              </ThemedText>
-              <ThemedText style={[styles.adminText, { color: secondaryColor }]}>
-                Mot de passe : admin123
-              </ThemedText>
-              <ThemedText style={[styles.adminNote, { color: placeholderColor }]}>
-                Compte créé automatiquement au premier lancement
-              </ThemedText>
-              
-              {/* Bouton de nettoyage d'urgence */}
-              <TouchableOpacity 
-                style={[styles.clearButton, { backgroundColor: '#ff4444' }]}
-                onPress={handleClearData}
-              >
-                <Ionicons name="trash" size={16} color="white" />
-                <ThemedText style={styles.clearButtonText}>
-                  🚨 Nettoyer les Données
-                </ThemedText>
-              </TouchableOpacity>
+              <ThemedText style={[styles.adminText, { color: secondaryColor }]}>Email : admin@church.com</ThemedText>
+              <ThemedText style={[styles.adminText, { color: secondaryColor }]}>Mot de passe : admin123</ThemedText>
+              <ThemedText style={[styles.adminNote, { color: placeholderColor }]}>Compte créé automatiquement au premier lancement</ThemedText>
             </View>
           </View>
         </View>

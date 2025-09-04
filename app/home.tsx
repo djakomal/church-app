@@ -1,16 +1,16 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { ThemedText } from '@/components/ThemedText';
-import { ChurchHeader } from '@/components/ChurchHeader';
-import { SongCard } from '@/components/SongCard';
-import { WorshipCard } from '@/components/WorshipCard';
 import { LoadingIndicator } from '@/components/LoadingIndicator';
-import { useThemeColor } from '@/hooks/useThemeColor';
-import { useSongs, useWorships, useCommunications } from '@/hooks/useSimpleDatabase';
+import { SongCard } from '@/components/SongCard';
+import { ThemedText } from '@/components/ThemedText';
+import { WorshipCard } from '@/components/WorshipCard';
 import { useAuth } from '@/context/AuthContext';
+import { useCommunications, useSongs, useWorships } from '@/hooks/useSimpleDatabase';
+import { useThemeColor } from '@/hooks/useThemeColor';
+import { EventBus } from '@/utils/EventBus';
+import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { router } from 'expo-router';
-import { Alert } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 
 export default function HomeScreen() {
   const [currentPage, setCurrentPage] = useState('accueil');
@@ -29,6 +29,13 @@ export default function HomeScreen() {
   const { songs, isLoading: songsLoading, loadSongs } = useSongs();
   const { worships, isLoading: worshipsLoading, loadWorships } = useWorships();
   const { communications, isLoading: communicationsLoading, loadCommunications } = useCommunications();
+
+  // Rediriger vers login si l'utilisateur est déconnecté (sécurité côté client)
+  useEffect(() => {
+    if (!user) {
+      router.replace('/login');
+    }
+  }, [user]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -59,6 +66,21 @@ export default function HomeScreen() {
 
   const isLoading = songsLoading || worshipsLoading || communicationsLoading;
 
+  // Recharger les données à chaque focus de l'écran
+  useFocusEffect(
+    useCallback(() => {
+      (async () => {
+        try {
+          await Promise.all([loadSongs(), loadWorships(), loadCommunications()]);
+        } catch (e) {}
+      })();
+      const unsubCreateWorship = EventBus.on('worship_created', async () => { await loadWorships(); });
+      const unsubDeleteWorship = EventBus.on('worship_deleted', async () => { await loadWorships(); });
+      const unsubComm = EventBus.on('communication_created', async () => { await loadCommunications(); });
+      return () => { unsubCreateWorship(); unsubDeleteWorship(); unsubComm(); };
+    }, [loadSongs, loadWorships, loadCommunications])
+  );
+
   if (isLoading && !refreshing) {
     return (
       <View style={[styles.container, { backgroundColor }]}>
@@ -68,10 +90,7 @@ export default function HomeScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor }]}>
-      {/* Header */}
-      <ChurchHeader currentPage={currentPage} onPageChange={setCurrentPage} />
-      
+    <View style={[styles.container, { backgroundColor }]}> 
       {/* Main content area */}
       <ScrollView 
         style={styles.contentArea} 

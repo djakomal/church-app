@@ -1,10 +1,11 @@
-import React from 'react';
-import { View, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { ThemedText } from './ThemedText';
-import { useThemeColor } from '@/hooks/useThemeColor';
 import { useAuth } from '@/context/AuthContext';
+import { useThemeColor } from '@/hooks/useThemeColor';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import React from 'react';
+import { Alert, ScrollView, StyleSheet, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ThemedText } from './ThemedText';
 
 interface ChurchHeaderProps {
   currentPage: string;
@@ -12,6 +13,9 @@ interface ChurchHeaderProps {
 }
 
 export function ChurchHeader({ currentPage, onPageChange }: ChurchHeaderProps) {
+  const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const isSmallScreen = width < 380;
   const backgroundColor = useThemeColor({}, 'background');
   const primaryColor = useThemeColor({}, 'primary');
   const textColor = useThemeColor({}, 'text');
@@ -90,12 +94,12 @@ export function ChurchHeader({ currentPage, onPageChange }: ChurchHeaderProps) {
             try {
               await logout();
               console.log('✅ Logout terminé, redirection...');
-              // Forcer la redirection vers la page de connexion
-              router.replace('/');
+              // Rediriger directement vers la page de connexion
+              router.replace('/login');
             } catch (error) {
               console.error('❌ Erreur lors de la déconnexion:', error);
               // En cas d'erreur, forcer quand même la redirection
-              router.replace('/');
+              router.replace('/login');
             }
           }
         }
@@ -104,18 +108,19 @@ export function ChurchHeader({ currentPage, onPageChange }: ChurchHeaderProps) {
   };
 
   return (
-    <View style={[styles.header, { backgroundColor }]}>
+    <SafeAreaView style={{ backgroundColor }}>
+    <View style={[styles.header, { backgroundColor, paddingTop: Math.max(12, insets.top), paddingHorizontal: isSmallScreen ? 12 : 16, paddingVertical: isSmallScreen ? 8 : 12 }]}> 
       {/* Logo et titre */}
       <View style={styles.logoContainer}>
-        <View style={[styles.logo, { backgroundColor: primaryColor }]}>
-          <Ionicons name="musical-notes" size={20} color="white" />
+        <View style={[styles.logo, { backgroundColor: primaryColor, width: isSmallScreen ? 32 : 40, height: isSmallScreen ? 32 : 40, borderRadius: isSmallScreen ? 6 : 8 }]}>
+          <Ionicons name="musical-notes" size={isSmallScreen ? 16 : 20} color="white" />
         </View>
         <View style={styles.titleContainer}>
-          <ThemedText style={[styles.appTitle, { color: textColor }]}>
+          <ThemedText style={[styles.appTitle, { color: textColor, fontSize: isSmallScreen ? 16 : 18 }]}> 
             Église
           </ThemedText>
           {user && (
-            <ThemedText style={[styles.userRole, { color: secondaryColor }]}>
+            <ThemedText style={[styles.userRole, { color: secondaryColor, fontSize: isSmallScreen ? 10 : 12 }]}> 
               {user.role === 'admin' ? 'Admin' : 
                user.role === 'editor' ? 'Éditeur' : 'Musicien'}
             </ThemedText>
@@ -123,37 +128,40 @@ export function ChurchHeader({ currentPage, onPageChange }: ChurchHeaderProps) {
         </View>
       </View>
 
-      {/* Navigation avec icônes */}
-      <View style={styles.navigation}>
+      {/* Navigation avec icônes - scrollable sur petit écran */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1, marginHorizontal: 8 }} contentContainerStyle={[styles.navigation, { gap: isSmallScreen ? 6 : 8 }]}>
         {pages.map((page) => (
           <TouchableOpacity
             key={page.id}
             style={[
               styles.navItem,
+              { minWidth: isSmallScreen ? 52 : 60, paddingHorizontal: isSmallScreen ? 8 : 12, paddingVertical: isSmallScreen ? 6 : 8 },
               currentPage === page.id && { backgroundColor: primaryColor + '20' }
             ]}
             onPress={() => handlePageClick(page)}
           >
             <Ionicons
               name={page.icon as any}
-              size={20}
+              size={isSmallScreen ? 18 : 20}
               color={currentPage === page.id ? primaryColor : textColor}
             />
-            <ThemedText
-              style={[
-                styles.navLabel,
-                { color: currentPage === page.id ? primaryColor : secondaryColor }
-              ]}
-            >
-              {page.label}
-            </ThemedText>
+            {!isSmallScreen && (
+              <ThemedText
+                style={[
+                  styles.navLabel,
+                  { color: currentPage === page.id ? primaryColor : secondaryColor }
+                ]}
+              >
+                {page.label}
+              </ThemedText>
+            )}
           </TouchableOpacity>
         ))}
-      </View>
+      </ScrollView>
 
       {/* Actions utilisateur */}
       <View style={styles.userActions}>
-        {user && (
+        {user && !isSmallScreen && (
           <View style={styles.userInfo}>
             <View style={[styles.userAvatar, { backgroundColor: primaryColor + '20' }]}>
               <Ionicons name="person" size={16} color={primaryColor} />
@@ -166,15 +174,27 @@ export function ChurchHeader({ currentPage, onPageChange }: ChurchHeaderProps) {
           </View>
         )}
         
+        {/* Notifications shortcut */}
         <TouchableOpacity 
-          style={[styles.logoutButton, { backgroundColor: accentColor }]}
+          style={[styles.logoutButton, { backgroundColor: primaryColor }]}
+          onPress={() => router.push('/notifications')}
+          activeOpacity={0.7}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        >
+          <Ionicons name="notifications" size={18} color="white" />
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.logoutButton, { backgroundColor: accentColor, width: isSmallScreen ? 36 : 40, height: isSmallScreen ? 36 : 40, borderRadius: isSmallScreen ? 18 : 20 }]}
           onPress={handleLogout}
           activeOpacity={0.7}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
-          <Ionicons name="log-out-outline" size={18} color="white" />
+          <Ionicons name="log-out-outline" size={isSmallScreen ? 16 : 18} color="white" />
         </TouchableOpacity>
       </View>
     </View>
+    </SafeAreaView>
   );
 }
 
@@ -184,8 +204,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 16,
-    paddingTop: 50, // Pour le status bar
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',
     backgroundColor: 'white',
@@ -216,6 +235,7 @@ const styles = StyleSheet.create({
   navigation: {
     flexDirection: 'row',
     gap: 8,
+    alignItems: 'center',
   },
   navItem: {
     alignItems: 'center',

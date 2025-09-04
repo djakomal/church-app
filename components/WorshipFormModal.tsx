@@ -1,126 +1,111 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  StyleSheet, 
-  Modal, 
-  TextInput, 
-  TouchableOpacity, 
-  ScrollView, 
-  Alert 
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { ThemedText } from './ThemedText';
 import { useThemeColor } from '@/hooks/useThemeColor';
+import { Ionicons } from '@expo/vector-icons';
+import React, { useEffect, useState } from 'react';
+import {
+  Alert,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native';
+import { ThemedText } from './ThemedText';
 
-interface Worship {
+export interface Worship {
   id?: number;
   title: string;
   date: string;
   time: string;
   location: string;
-  theme?: string;
-  description?: string;
+  theme: string;
+  preacher: string;
+  description: string;
+  songs: string[];
+  musicians: string[];
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface WorshipFormModalProps {
   visible: boolean;
   worship?: Worship | null;
   onClose: () => void;
-  onSave: (worship: Worship) => void;
+  onSave: (worship: Omit<Worship, 'id' | 'created_at' | 'updated_at'>) => void;
 }
 
-const locations = [
-  'Sanctuaire Principal',
-  'Chapelle',
-  'Salle de Conférence',
-  'Amphithéâtre',
-  'Salle Polyvalente',
-  'Extérieur - Jardin',
-  'Salle de Jeunesse',
-  'Autre lieu'
-];
-
-const themes = [
-  'Louange et Adoration',
-  'Évangélisation',
-  'Enseignement Biblique',
-  'Prière et Intercession',
-  'Communion Fraternelle',
-  'Service de Noël',
-  'Service de Pâques',
-  'Baptême',
-  'Mariage',
-  'Funérailles',
-  'Consécration',
-  'Action de Grâces',
-  'Jeûne et Prière',
-  'Mission et Évangélisation',
-  'Guérison et Délivrance'
-];
-
 export function WorshipFormModal({ visible, worship, onClose, onSave }: WorshipFormModalProps) {
-  const [formData, setFormData] = useState<Worship>({
+  const [formData, setFormData] = useState<Omit<Worship, 'id' | 'created_at' | 'updated_at'>>({
     title: '',
     date: '',
     time: '',
-    location: 'Sanctuaire Principal',
+    location: '',
     theme: '',
-    description: ''
+    preacher: '',
+    description: '',
+    songs: [],
+    musicians: []
   });
-
-  const [showLocationDropdown, setShowLocationDropdown] = useState(false);
-  const [showThemeDropdown, setShowThemeDropdown] = useState(false);
 
   const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
-  const borderColor = useThemeColor({}, 'mediumGray');
   const primaryColor = useThemeColor({}, 'primary');
+  const secondaryColor = useThemeColor({}, 'secondary');
+  const borderColor = useThemeColor({}, 'mediumGray');
   const placeholderColor = useThemeColor({}, 'secondary');
 
   useEffect(() => {
     if (worship) {
-      setFormData(worship);
+      setFormData({
+        title: worship.title,
+        date: worship.date,
+        time: worship.time,
+        location: worship.location,
+        theme: worship.theme,
+        preacher: worship.preacher,
+        description: worship.description,
+        songs: worship.songs,
+        musicians: worship.musicians
+      });
     } else {
-      // Valeurs par défaut pour un nouveau culte
-      const today = new Date();
-      const nextSunday = new Date(today);
-      nextSunday.setDate(today.getDate() + (7 - today.getDay()));
-      
       setFormData({
         title: '',
-        date: nextSunday.toISOString().split('T')[0],
-        time: '10:00',
-        location: 'Sanctuaire Principal',
+        date: '',
+        time: '',
+        location: '',
         theme: '',
-        description: ''
+        preacher: '',
+        description: '',
+        songs: [],
+        musicians: []
       });
     }
   }, [worship, visible]);
 
   const handleSave = () => {
     if (!formData.title.trim()) {
-      Alert.alert('Erreur', 'Le titre du culte est obligatoire');
+      Alert.alert('Erreur', 'Le titre est obligatoire');
       return;
     }
 
     if (!formData.date.trim()) {
-      Alert.alert('Erreur', 'La date du culte est obligatoire');
+      Alert.alert('Erreur', 'La date est obligatoire');
       return;
     }
 
     if (!formData.time.trim()) {
-      Alert.alert('Erreur', 'L\'heure du culte est obligatoire');
+      Alert.alert('Erreur', 'L\'heure est obligatoire');
       return;
     }
 
-    // Validation de la date
+    // Validation du format de date
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(formData.date)) {
       Alert.alert('Erreur', 'Format de date invalide (YYYY-MM-DD)');
       return;
     }
 
-    // Validation de l'heure
+    // Validation du format d'heure
     const timeRegex = /^\d{2}:\d{2}$/;
     if (!timeRegex.test(formData.time)) {
       Alert.alert('Erreur', 'Format d\'heure invalide (HH:MM)');
@@ -128,18 +113,13 @@ export function WorshipFormModal({ visible, worship, onClose, onSave }: WorshipF
     }
 
     onSave(formData);
-    onClose();
-  };
-
-  const handleClose = () => {
-    setShowLocationDropdown(false);
-    setShowThemeDropdown(false);
-    onClose();
   };
 
   const formatDateForDisplay = (dateString: string) => {
     if (!dateString) return '';
     const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+
     return date.toLocaleDateString('fr-FR', {
       weekday: 'long',
       year: 'numeric',
@@ -153,205 +133,171 @@ export function WorshipFormModal({ visible, worship, onClose, onSave }: WorshipF
       visible={visible}
       animationType="slide"
       presentationStyle="pageSheet"
+      onRequestClose={onClose}
     >
       <View style={[styles.container, { backgroundColor }]}>
         <View style={styles.header}>
+          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <Ionicons name="close" size={24} color={textColor} />
+          </TouchableOpacity>
           <ThemedText style={[styles.title, { color: textColor }]}>
             {worship ? 'Modifier le Culte' : 'Nouveau Culte'}
           </ThemedText>
-          <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
-            <Ionicons name="close" size={24} color={textColor} />
+          <TouchableOpacity onPress={handleSave} style={[styles.saveButton, { backgroundColor: primaryColor }]}>
+            <ThemedText style={styles.saveButtonText}>Sauvegarder</ThemedText>
           </TouchableOpacity>
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          {/* Titre */}
-          <View style={styles.formGroup}>
-            <ThemedText style={[styles.label, { color: textColor }]}>
-              Titre du Culte *
-            </ThemedText>
-            <TextInput
-              style={[styles.input, { backgroundColor, borderColor, color: textColor }]}
-              value={formData.title}
-              onChangeText={(text) => setFormData({ ...formData, title: text })}
-              placeholder="Ex: Service Dominical, Culte de Noël..."
-              placeholderTextColor={placeholderColor}
-            />
-          </View>
-
-          {/* Date */}
-          <View style={styles.formGroup}>
-            <ThemedText style={[styles.label, { color: textColor }]}>
-              Date *
-            </ThemedText>
-            <TextInput
-              style={[styles.input, { backgroundColor, borderColor, color: textColor }]}
-              value={formData.date}
-              onChangeText={(text) => setFormData({ ...formData, date: text })}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={placeholderColor}
-            />
-            {formData.date && (
-              <ThemedText style={[styles.datePreview, { color: placeholderColor }]}>
-                {formatDateForDisplay(formData.date)}
+          <View style={styles.form}>
+            {/* Titre */}
+            <View style={styles.inputGroup}>
+              <ThemedText style={[styles.label, { color: textColor }]}>
+                Titre du Culte *
               </ThemedText>
-            )}
-          </View>
+              <TextInput
+                style={[styles.input, { color: textColor, borderColor }]}
+                value={formData.title}
+                onChangeText={(text) => setFormData({ ...formData, title: text })}
+                placeholder="Ex: Culte du Dimanche"
+                placeholderTextColor={placeholderColor}
+              />
+            </View>
 
-          {/* Heure */}
-          <View style={styles.formGroup}>
-            <ThemedText style={[styles.label, { color: textColor }]}>
-              Heure *
-            </ThemedText>
-            <TextInput
-              style={[styles.input, { backgroundColor, borderColor, color: textColor }]}
-              value={formData.time}
-              onChangeText={(text) => setFormData({ ...formData, time: text })}
-              placeholder="HH:MM"
-              placeholderTextColor={placeholderColor}
-            />
-          </View>
-
-          {/* Lieu */}
-          <View style={styles.formGroup}>
-            <ThemedText style={[styles.label, { color: textColor }]}>
-              Lieu *
-            </ThemedText>
-            <TouchableOpacity
-              style={[styles.dropdown, { backgroundColor, borderColor }]}
-              onPress={() => setShowLocationDropdown(!showLocationDropdown)}
-            >
-              <ThemedText style={[styles.dropdownText, { color: textColor }]}>
-                {formData.location}
-              </ThemedText>
-              <Ionicons name="chevron-down" size={16} color={placeholderColor} />
-            </TouchableOpacity>
-            
-            {showLocationDropdown && (
-              <View style={[styles.dropdownMenu, { backgroundColor, borderColor }]}>
-                <ScrollView style={styles.dropdownScroll} nestedScrollEnabled>
-                  {locations.map((location) => (
-                    <TouchableOpacity
-                      key={location}
-                      style={styles.dropdownItem}
-                      onPress={() => {
-                        setFormData({ ...formData, location });
-                        setShowLocationDropdown(false);
-                      }}
-                    >
-                      <ThemedText style={[styles.dropdownItemText, { color: textColor }]}>
-                        {location}
-                      </ThemedText>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
+            {/* Date et Heure */}
+            <View style={styles.row}>
+              <View style={[styles.inputGroup, { flex: 1 }]}>
+                <ThemedText style={[styles.label, { color: textColor }]}>
+                  Date *
+                </ThemedText>
+                <TextInput
+                  style={[styles.input, { color: textColor, borderColor }]}
+                  value={formData.date}
+                  onChangeText={(text) => setFormData({ ...formData, date: text })}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor={placeholderColor}
+                />
+                {formData.date && (
+                  <ThemedText style={[styles.datePreview, { color: secondaryColor }]}>
+                    {formatDateForDisplay(formData.date)}
+                  </ThemedText>
+                )}
               </View>
-            )}
-          </View>
 
-          {/* Thème */}
-          <View style={styles.formGroup}>
-            <ThemedText style={[styles.label, { color: textColor }]}>
-              Thème
-            </ThemedText>
-            <TouchableOpacity
-              style={[styles.dropdown, { backgroundColor, borderColor }]}
-              onPress={() => setShowThemeDropdown(!showThemeDropdown)}
-            >
-              <ThemedText style={[styles.dropdownText, { color: formData.theme ? textColor : placeholderColor }]}>
-                {formData.theme || 'Sélectionner un thème...'}
-              </ThemedText>
-              <Ionicons name="chevron-down" size={16} color={placeholderColor} />
-            </TouchableOpacity>
-            
-            {showThemeDropdown && (
-              <View style={[styles.dropdownMenu, { backgroundColor, borderColor }]}>
-                <ScrollView style={styles.dropdownScroll} nestedScrollEnabled>
-                  <TouchableOpacity
-                    style={styles.dropdownItem}
-                    onPress={() => {
-                      setFormData({ ...formData, theme: '' });
-                      setShowThemeDropdown(false);
-                    }}
-                  >
-                    <ThemedText style={[styles.dropdownItemText, { color: placeholderColor }]}>
-                      Aucun thème
-                    </ThemedText>
-                  </TouchableOpacity>
-                  {themes.map((theme) => (
-                    <TouchableOpacity
-                      key={theme}
-                      style={styles.dropdownItem}
-                      onPress={() => {
-                        setFormData({ ...formData, theme });
-                        setShowThemeDropdown(false);
-                      }}
-                    >
-                      <ThemedText style={[styles.dropdownItemText, { color: textColor }]}>
-                        {theme}
-                      </ThemedText>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
+              <View style={[styles.inputGroup, { flex: 1 }]}>
+                <ThemedText style={[styles.label, { color: textColor }]}>
+                  Heure *
+                </ThemedText>
+                <TextInput
+                  style={[styles.input, { color: textColor, borderColor }]}
+                  value={formData.time}
+                  onChangeText={(text) => setFormData({ ...formData, time: text })}
+                  placeholder="HH:MM"
+                  placeholderTextColor={placeholderColor}
+                />
               </View>
-            )}
-          </View>
+            </View>
 
-          {/* Description */}
-          <View style={styles.formGroup}>
-            <ThemedText style={[styles.label, { color: textColor }]}>
-              Description
-            </ThemedText>
-            <TextInput
-              style={[styles.textArea, { backgroundColor, borderColor, color: textColor }]}
-              value={formData.description}
-              onChangeText={(text) => setFormData({ ...formData, description: text })}
-              placeholder="Description du culte, instructions spéciales, notes..."
-              placeholderTextColor={placeholderColor}
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-            />
-          </View>
+            {/* Lieu */}
+            <View style={styles.inputGroup}>
+              <ThemedText style={[styles.label, { color: textColor }]}>
+                Lieu
+              </ThemedText>
+              <TextInput
+                style={[styles.input, { color: textColor, borderColor }]}
+                value={formData.location}
+                onChangeText={(text) => setFormData({ ...formData, location: text })}
+                placeholder="Ex: Sanctuaire principal"
+                placeholderTextColor={placeholderColor}
+              />
+            </View>
 
-          {/* Informations sur les champs */}
-          <View style={styles.infoSection}>
-            <ThemedText style={[styles.infoTitle, { color: textColor }]}>
-              Conseils :
-            </ThemedText>
-            <ThemedText style={[styles.infoText, { color: useThemeColor({}, 'secondary') }]}>
-              • Utilisez un titre descriptif pour identifier facilement le culte
-            </ThemedText>
-            <ThemedText style={[styles.infoText, { color: useThemeColor({}, 'secondary') }]}>
-              • Le thème aide à organiser la musique et le message
-            </ThemedText>
-            <ThemedText style={[styles.infoText, { color: useThemeColor({}, 'secondary') }]}>
-              • La description peut inclure des instructions pour l'équipe
-            </ThemedText>
+            {/* Thème */}
+            <View style={styles.inputGroup}>
+              <ThemedText style={[styles.label, { color: textColor }]}>
+                Thème
+              </ThemedText>
+              <TextInput
+                style={[styles.input, { color: textColor, borderColor }]}
+                value={formData.theme}
+                onChangeText={(text) => setFormData({ ...formData, theme: text })}
+                placeholder="Ex: L'amour de Dieu"
+                placeholderTextColor={placeholderColor}
+              />
+            </View>
+
+            {/* Prédicateur */}
+            <View style={styles.inputGroup}>
+              <ThemedText style={[styles.label, { color: textColor }]}>
+                Prédicateur
+              </ThemedText>
+              <TextInput
+                style={[styles.input, { color: textColor, borderColor }]}
+                value={formData.preacher}
+                onChangeText={(text) => setFormData({ ...formData, preacher: text })}
+                placeholder="Nom du prédicateur"
+                placeholderTextColor={placeholderColor}
+              />
+            </View>
+
+            {/* Description */}
+            <View style={styles.inputGroup}>
+              <ThemedText style={[styles.label, { color: textColor }]}>
+                Description
+              </ThemedText>
+              <TextInput
+                style={[styles.textArea, { color: textColor, borderColor }]}
+                value={formData.description}
+                onChangeText={(text) => setFormData({ ...formData, description: text })}
+                placeholder="Description du culte, notes spéciales..."
+                placeholderTextColor={placeholderColor}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+            </View>
+
+            {/* Chants */}
+            <View style={styles.inputGroup}>
+              <ThemedText style={[styles.label, { color: textColor }]}>
+                Chants (séparés par des virgules)
+              </ThemedText>
+              <TextInput
+                style={[styles.textArea, { color: textColor, borderColor }]}
+                value={formData.songs.join(', ')}
+                onChangeText={(text) => setFormData({ 
+                  ...formData, 
+                  songs: text.split(',').map(s => s.trim()).filter(s => s.length > 0)
+                })}
+                placeholder="Ex: Amazing Grace, How Great Thou Art"
+                placeholderTextColor={placeholderColor}
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+              />
+            </View>
+
+            {/* Musiciens */}
+            <View style={styles.inputGroup}>
+              <ThemedText style={[styles.label, { color: textColor }]}>
+                Musiciens (séparés par des virgules)
+              </ThemedText>
+              <TextInput
+                style={[styles.textArea, { color: textColor, borderColor }]}
+                value={formData.musicians.join(', ')}
+                onChangeText={(text) => setFormData({ 
+                  ...formData, 
+                  musicians: text.split(',').map(s => s.trim()).filter(s => s.length > 0)
+                })}
+                placeholder="Ex: Jean Dupont, Marie Martin"
+                placeholderTextColor={placeholderColor}
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+              />
+            </View>
           </View>
         </ScrollView>
-
-        {/* Boutons d'action */}
-        <View style={styles.footer}>
-          <TouchableOpacity
-            style={[styles.cancelButton, { borderColor }]}
-            onPress={handleClose}
-          >
-            <ThemedText style={[styles.cancelButtonText, { color: textColor }]}>
-              Annuler
-            </ThemedText>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[styles.saveButton, { backgroundColor: primaryColor }]}
-            onPress={handleSave}
-          >
-            <Ionicons name="checkmark" size={20} color="white" />
-            <ThemedText style={styles.saveButtonText}>
-              {worship ? 'Modifier' : 'Créer'}
-            </ThemedText>
-          </TouchableOpacity>
-        </View>
       </View>
     </Modal>
   );
@@ -360,143 +306,69 @@ export function WorshipFormModal({ visible, worship, onClose, onSave }: WorshipF
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 50,
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    borderBottomColor: 'rgba(0,0,0,0.1)',
   },
   closeButton: {
     padding: 8,
   },
+  title: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  saveButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  saveButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+  },
   content: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
   },
-  formGroup: {
-    marginBottom: 20,
+  form: {
+    padding: 16,
+    gap: 16,
+  },
+  inputGroup: {
+    gap: 8,
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 16,
   },
   label: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 8,
   },
   input: {
+    borderWidth: 1,
+    borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
     fontSize: 16,
   },
   textArea: {
+    borderWidth: 1,
+    borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
     fontSize: 16,
-    minHeight: 100,
+    minHeight: 80,
   },
   datePreview: {
-    fontSize: 14,
-    marginTop: 4,
-    fontStyle: 'italic',
-  },
-  dropdown: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  dropdownText: {
-    fontSize: 16,
-  },
-  dropdownMenu: {
-    position: 'absolute',
-    top: 50,
-    left: 0,
-    right: 0,
-    borderRadius: 8,
-    borderWidth: 1,
-    zIndex: 1000,
-    elevation: 5,
-    maxHeight: 200,
-  },
-  dropdownScroll: {
-    maxHeight: 200,
-  },
-  dropdownItem: {
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
-  },
-  dropdownItemText: {
-    fontSize: 16,
-  },
-  infoSection: {
-    marginTop: 20,
-    padding: 16,
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.2)',
-  },
-  infoTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  infoText: {
     fontSize: 12,
-    marginBottom: 4,
-    lineHeight: 18,
-  },
-  footer: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
-    gap: 12,
-  },
-  cancelButton: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    borderWidth: 1,
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  saveButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    gap: 8,
-  },
-  saveButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
+    fontStyle: 'italic',
+    marginTop: 4,
   },
 });

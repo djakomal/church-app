@@ -1,74 +1,45 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { ThemedText } from './ThemedText';
 import { useThemeColor } from '@/hooks/useThemeColor';
+import { Ionicons } from '@expo/vector-icons';
+import React from 'react';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ThemedText } from './ThemedText';
 
 interface WorshipCardProps {
   id: number;
   title: string;
   date: string;
   time: string;
-  location: string;
+  location?: string;
   theme?: string;
-  description?: string;
-  onEdit: () => void;
-  onDelete: () => void;
-  onDuplicate?: () => void;
+  preacher?: string;
+  songs?: string[];
+  musicians?: string[];
+  onEdit?: () => void;
+  onDelete?: () => void;
+  onView?: () => void;
 }
 
-export function WorshipCard({ 
+export function WorshipCard({
   id,
-  title, 
-  date, 
-  time, 
-  location, 
+  title,
+  date,
+  time,
+  location,
   theme,
-  description,
+  preacher,
+  songs,
+  musicians,
   onEdit,
   onDelete,
-  onDuplicate
+  onView
 }: WorshipCardProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
-  
-  const backgroundColor = useThemeColor({}, 'background');
+  const backgroundColor = useThemeColor({}, 'cardBackground');
   const textColor = useThemeColor({}, 'text');
-  const borderColor = useThemeColor({}, 'mediumGray');
-  const primaryColor = useThemeColor({}, 'primary');
-  const accentColor = useThemeColor({}, 'accent');
-  const successColor = useThemeColor({}, 'success');
   const secondaryColor = useThemeColor({}, 'secondary');
-
-  const handleDelete = () => {
-    Alert.alert(
-      'Supprimer le culte',
-      `Êtes-vous sûr de vouloir supprimer "${title}" ?`,
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { 
-          text: 'Supprimer', 
-          style: 'destructive',
-          onPress: onDelete
-        }
-      ]
-    );
-  };
-
-  const handleDuplicate = () => {
-    if (onDuplicate) {
-      Alert.alert(
-        'Dupliquer le culte',
-        `Créer une copie de "${title}" ?`,
-        [
-          { text: 'Annuler', style: 'cancel' },
-          { 
-            text: 'Dupliquer', 
-            onPress: onDuplicate
-          }
-        ]
-      );
-    }
-  };
+  const primaryColor = useThemeColor({}, 'primary');
+  const borderColor = useThemeColor({}, 'mediumGray');
+  const successColor = useThemeColor({}, 'success');
+  const errorColor = useThemeColor({}, 'error');
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -80,13 +51,9 @@ export function WorshipCard({
     });
   };
 
-  const formatTime = (timeString: string) => {
-    return timeString;
-  };
-
   const getStatusColor = () => {
+    const worshipDate = new Date(date);
     const now = new Date();
-    const worshipDate = new Date(`${date}T${time}`);
     
     if (worshipDate < now) {
       return '#6b7280'; // Passé - gris
@@ -98,129 +65,122 @@ export function WorshipCard({
   };
 
   const getStatusText = () => {
+    const worshipDate = new Date(date);
     const now = new Date();
-    const worshipDate = new Date(`${date}T${time}`);
     
     if (worshipDate < now) {
       return 'Terminé';
     } else if (worshipDate.toDateString() === now.toDateString()) {
       return 'Aujourd\'hui';
     } else {
-      const diffTime = worshipDate.getTime() - now.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      return `Dans ${diffDays} jour${diffDays > 1 ? 's' : ''}`;
-    }
-  };
-
-  const getLocationIcon = (location: string) => {
-    switch (location.toLowerCase()) {
-      case 'sanctuaire principal':
-        return 'business';
-      case 'chapelle':
-        return 'home';
-      case 'salle de conférence':
-        return 'people';
-      case 'amphithéâtre':
-        return 'library';
-      case 'extérieur - jardin':
-        return 'leaf';
-      default:
-        return 'location';
+      return 'À venir';
     }
   };
 
   return (
-    <View style={[styles.card, { backgroundColor, borderColor }]}>
-      <TouchableOpacity 
-        style={styles.cardContent}
-        onPress={() => setIsExpanded(!isExpanded)}
-        activeOpacity={0.7}
-      >
-        <View style={styles.mainInfo}>
-          <View style={styles.leftContent}>
-            <View style={styles.titleRow}>
-              <ThemedText style={[styles.title, { color: textColor }]}>
-                {title}
-              </ThemedText>
-              <View style={[styles.statusBadge, { backgroundColor: getStatusColor() }]}>
-                <ThemedText style={styles.statusText}>
-                  {getStatusText()}
-                </ThemedText>
-              </View>
-            </View>
-            
-            <View style={styles.dateTimeRow}>
-              <View style={styles.dateTimeItem}>
-                <Ionicons name="calendar" size={16} color={primaryColor} />
-                <ThemedText style={[styles.dateTimeText, { color: textColor }]}>
-                  {formatDate(date)}
-                </ThemedText>
-              </View>
-              <View style={styles.dateTimeItem}>
-                <Ionicons name="time" size={16} color={primaryColor} />
-                <ThemedText style={[styles.dateTimeText, { color: textColor }]}>
-                  {formatTime(time)}
-                </ThemedText>
-              </View>
-            </View>
-
-            <View style={styles.locationRow}>
-              <Ionicons name={getLocationIcon(location)} size={16} color={secondaryColor} />
-              <ThemedText style={[styles.locationText, { color: secondaryColor }]}>
-                {location}
-              </ThemedText>
-            </View>
-
-            {theme && (
-              <View style={styles.themeRow}>
-                <Ionicons name="bookmark" size={16} color={accentColor} />
-                <ThemedText style={[styles.themeText, { color: accentColor }]}>
-                  {theme}
-                </ThemedText>
-              </View>
-            )}
+    <TouchableOpacity
+      style={[styles.card, { backgroundColor, borderColor }]}
+      onPress={onView}
+      activeOpacity={0.7}
+    >
+      <View style={styles.header}>
+        <View style={styles.titleSection}>
+          <ThemedText style={[styles.title, { color: textColor }]}>
+            {title}
+          </ThemedText>
+          <View style={[styles.statusBadge, { backgroundColor: getStatusColor() }]}>
+            <ThemedText style={styles.statusText}>
+              {getStatusText()}
+            </ThemedText>
           </View>
-          
+        </View>
+        
+        {(onEdit || onDelete) && (
           <View style={styles.actions}>
-            <TouchableOpacity 
-              style={[styles.actionButton, { backgroundColor: primaryColor }]}
-              onPress={onEdit}
-            >
-              <Ionicons name="create" size={16} color="white" />
-            </TouchableOpacity>
-            
-            {onDuplicate && (
-              <TouchableOpacity 
-                style={[styles.actionButton, { backgroundColor: successColor }]}
-                onPress={handleDuplicate}
+            {onEdit && (
+              <TouchableOpacity
+                onPress={onEdit}
+                style={[styles.actionButton, { backgroundColor: primaryColor }]}
               >
-                <Ionicons name="copy" size={16} color="white" />
+                <Ionicons name="pencil" size={14} color="white" />
               </TouchableOpacity>
             )}
-            
-            <TouchableOpacity 
-              style={[styles.actionButton, { backgroundColor: accentColor }]}
-              onPress={handleDelete}
-            >
-              <Ionicons name="trash" size={16} color="white" />
-            </TouchableOpacity>
+            {onDelete && (
+              <TouchableOpacity
+                onPress={onDelete}
+                style={[styles.actionButton, { backgroundColor: errorColor }]}
+              >
+                <Ionicons name="trash" size={14} color="white" />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+      </View>
+
+      <View style={styles.details}>
+        <View style={styles.dateTimeRow}>
+          <View style={styles.dateTime}>
+            <Ionicons name="calendar" size={16} color={secondaryColor} />
+            <ThemedText style={[styles.dateText, { color: textColor }]}>
+              {formatDate(date)}
+            </ThemedText>
+          </View>
+          <View style={styles.dateTime}>
+            <Ionicons name="time" size={16} color={secondaryColor} />
+            <ThemedText style={[styles.timeText, { color: textColor }]}>
+              {time}
+            </ThemedText>
           </View>
         </View>
 
-        {isExpanded && description && (
-          <View style={styles.expandedContent}>
-            <View style={styles.descriptionSection}>
-              <ThemedText style={[styles.descriptionTitle, { color: textColor }]}>
-                Description :
-              </ThemedText>
-              <ThemedText style={[styles.descriptionText, { color: secondaryColor }]}>
-                {description}
-              </ThemedText>
-            </View>
+        {location && (
+          <View style={styles.infoRow}>
+            <Ionicons name="location" size={16} color={secondaryColor} />
+            <ThemedText style={[styles.infoText, { color: secondaryColor }]}>
+              {location}
+            </ThemedText>
           </View>
         )}
-      </TouchableOpacity>
-    </View>
+
+        {theme && (
+          <View style={styles.infoRow}>
+            <Ionicons name="book" size={16} color={secondaryColor} />
+            <ThemedText style={[styles.infoText, { color: secondaryColor }]}>
+              Thème: {theme}
+            </ThemedText>
+          </View>
+        )}
+
+        {preacher && (
+          <View style={styles.infoRow}>
+            <Ionicons name="person" size={16} color={secondaryColor} />
+            <ThemedText style={[styles.infoText, { color: secondaryColor }]}>
+              Prédicateur: {preacher}
+            </ThemedText>
+          </View>
+        )}
+
+        {songs && songs.length > 0 && (
+          <View style={styles.infoRow}>
+            <Ionicons name="musical-notes" size={16} color={secondaryColor} />
+            <ThemedText style={[styles.infoText, { color: secondaryColor }]}>
+              {songs.length} chant{songs.length > 1 ? 's' : ''}: {songs.slice(0, 2).join(', ')}
+              {songs.length > 2 && '...'}
+            </ThemedText>
+          </View>
+        )}
+
+        {musicians && musicians.length > 0 && (
+          <View style={styles.infoRow}>
+            <Ionicons name="people" size={16} color={secondaryColor} />
+            <ThemedText style={[styles.infoText, { color: secondaryColor }]}>
+              {musicians.length} musicien{musicians.length > 1 ? 's' : ''}: {musicians.slice(0, 2).join(', ')}
+              {musicians.length > 2 && '...'}
+            </ThemedText>
+          </View>
+        )}
+      </View>
+    </TouchableOpacity>
   );
 }
 
@@ -228,31 +188,25 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 12,
     borderWidth: 1,
-    marginBottom: 12,
-    overflow: 'hidden',
-  },
-  cardContent: {
     padding: 16,
+    marginBottom: 12,
   },
-  mainInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  leftContent: {
-    flex: 1,
-    marginRight: 12,
-  },
-  titleRow: {
+  header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 8,
+    marginBottom: 12,
+  },
+  titleSection: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   title: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: 'bold',
     flex: 1,
-    marginRight: 8,
   },
   statusBadge: {
     paddingHorizontal: 8,
@@ -261,69 +215,47 @@ const styles = StyleSheet.create({
   },
   statusText: {
     color: 'white',
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '600',
-  },
-  dateTimeRow: {
-    flexDirection: 'row',
-    marginBottom: 8,
-    gap: 16,
-  },
-  dateTimeItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  dateTimeText: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 4,
-  },
-  locationText: {
-    fontSize: 14,
-  },
-  themeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 4,
-  },
-  themeText: {
-    fontSize: 14,
-    fontWeight: '500',
   },
   actions: {
     flexDirection: 'row',
     gap: 8,
   },
   actionButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  expandedContent: {
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
+  details: {
+    gap: 8,
   },
-  descriptionSection: {
-    marginBottom: 12,
+  dateTimeRow: {
+    flexDirection: 'row',
+    gap: 16,
   },
-  descriptionTitle: {
+  dateTime: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  dateText: {
     fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 6,
+    fontWeight: '500',
   },
-  descriptionText: {
+  timeText: {
     fontSize: 14,
-    lineHeight: 20,
+    fontWeight: '500',
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  infoText: {
+    fontSize: 13,
+    flex: 1,
   },
 });

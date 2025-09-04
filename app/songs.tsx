@@ -1,16 +1,16 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
-import { ChurchHeader } from '@/components/ChurchHeader';
-import { SongCard } from '@/components/SongCard';
-import { ManagedSongCard } from '@/components/ManagedSongCard';
-import { SongFormModal } from '@/components/SongFormModal';
+import { Ionicons } from '@expo/vector-icons';
+import React, { useState } from 'react';
+import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+// Header supprimé: on utilise la barre d'onglets en bas
 import { LoadingIndicator } from '@/components/LoadingIndicator';
-import { useThemeColor } from '@/hooks/useThemeColor';
-import { useSongs } from '@/hooks/useSimpleDatabase';
+import { ManagedSongCard } from '@/components/ManagedSongCard';
+import { SongCard } from '@/components/SongCard';
+import { SongFormModal } from '@/components/SongFormModal';
 import { useAuth } from '@/context/AuthContext';
 import { Song } from '@/database/simpleDatabase';
+import { useSongs } from '@/hooks/useSimpleDatabase';
+import { useThemeColor } from '@/hooks/useThemeColor';
 import { Alert } from 'react-native';
 
 export default function SongsScreen() {
@@ -128,10 +128,7 @@ export default function SongsScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor }]}>
-      {/* Header */}
-      <ChurchHeader currentPage={currentPage} onPageChange={setCurrentPage} />
-      
+    <View style={[styles.container, { backgroundColor }]}> 
       {/* Main content area */}
       <ScrollView style={styles.contentArea} showsVerticalScrollIndicator={false}>
         <View style={styles.content}>

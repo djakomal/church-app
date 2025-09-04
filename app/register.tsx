@@ -1,19 +1,19 @@
-import React, { useState } from 'react';
-import { 
-  View, 
-  StyleSheet, 
-  TextInput, 
-  TouchableOpacity, 
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
-import { useThemeColor } from '@/hooks/useThemeColor';
 import { useAuth, UserRole } from '@/context/AuthContext';
+import { useThemeColor } from '@/hooks/useThemeColor';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import React, { useState } from 'react';
+import {
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    View
+} from 'react-native';
 
 export default function RegisterScreen() {
   const [formData, setFormData] = useState({
@@ -37,7 +37,7 @@ export default function RegisterScreen() {
   const warningColor = useThemeColor({}, 'warning');
   const accentColor = useThemeColor({}, 'accent');
 
-  const { register } = useAuth();
+  const { register, login } = useAuth();
 
   const validateForm = () => {
     if (!formData.name.trim()) {
@@ -82,16 +82,19 @@ export default function RegisterScreen() {
       });
 
       if (success) {
-        Alert.alert(
-          'Inscription réussie',
-          'Votre compte a été créé avec succès. Vous pouvez maintenant vous connecter.',
-          [
-            {
-              text: 'OK',
-              onPress: () => router.replace('/login')
-            }
-          ]
-        );
+        // Connexion automatique après création du compte
+        const loggedIn = await login(formData.email.trim().toLowerCase(), formData.password);
+        if (loggedIn) {
+          router.replace('/(tabs)/home');
+        } else {
+          Alert.alert(
+            'Inscription réussie',
+            'Votre compte a été créé. Connectez-vous avec vos identifiants.',
+            [
+              { text: 'OK', onPress: () => router.replace('/login') }
+            ]
+          );
+        }
       } else {
         Alert.alert('Erreur', 'Cette adresse email est déjà utilisée');
       }
