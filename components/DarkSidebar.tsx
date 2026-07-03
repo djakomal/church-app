@@ -2,6 +2,7 @@ import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from './ThemedText';
+import { useI18n } from '@/context/I18nContext';
 
 interface DarkSidebarProps {
   currentPage: string;
@@ -9,9 +10,10 @@ interface DarkSidebarProps {
 }
 
 export function DarkSidebar({ currentPage, onPageChange }: DarkSidebarProps) {
+  const { t } = useI18n();
   const menuItems = [
-    { id: 'accueil', label: 'Accueil', icon: 'home' },
-    { id: 'gestion-culte', label: 'Gestion Culte', icon: 'calendar' },
+    { id: 'accueil', label: t('home.title'), icon: 'home' },
+    { id: 'gestion-culte', label: t('worships.title'), icon: 'calendar' },
     { id: 'mes-chants', label: 'Mes Chants', icon: 'musical-notes' },
   ];
 

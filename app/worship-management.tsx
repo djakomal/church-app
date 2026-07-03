@@ -1,32 +1,420 @@
-import { ChurchFooter } from '@/components/ChurchFooter';
+import React, { useState, useMemo, useCallback } from 'react';
+import { Alert, ScrollView, StyleSheet, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { useThemeColor } from '@/hooks/useThemeColor';
+import { useAuth } from '@/context/AuthContext';
+import { useSongs, useTeamMembers } from '@/hooks/useSimpleDatabase';
+import { Ionicons } from '@expo/vector-icons';
+import { ThemedText } from '@/components/ThemedText';
+import { LoadingIndicator } from '@/components/LoadingIndicator';
 import { ChurchHeader } from '@/components/ChurchHeader';
 import { ChurchSidebar } from '@/components/ChurchSidebar';
-import { LoadingIndicator } from '@/components/LoadingIndicator';
-import { ManagedSongCard } from '@/components/ManagedSongCard';
-import { NotificationFormModal, NotificationData } from '@/components/NotificationFormModal';
-import { QuickCommunication } from '@/components/QuickCommunication';
+import { ChurchFooter } from '@/components/ChurchFooter';
 import { SongFormModal } from '@/components/SongFormModal';
-import { TeamMemberCard } from '@/components/TeamMemberCard';
 import { TeamMemberFormModal } from '@/components/TeamMemberFormModal';
-import { ThemedText } from '@/components/ThemedText';
-import { WorshipCard } from '@/components/WorshipCard';
+import { WorshipFormModal } from '@/components/WorshipFormModal';
+import { NotificationFormModal } from '@/components/NotificationFormModal';
+import { SectionHeader } from '@/components/ReusableUI';
+import { PermissionGate } from '@/components/ReusableUI';
+import { EmptyState } from '@/components/ReusableUI';
+import { StatusBadge } from '@/components/ReusableUI';
+import { Song, TeamMember, Worship } from '@/database/simpleDatabase';
+import { NotificationData } from '@/components/NotificationFormModal';
 import { WorshipDetailsForm } from '@/components/WorshipDetailsForm';
-import { WorshipFormModal, Worship } from '@/components/WorshipFormModal';
-import { useAuth } from '@/context/AuthContext';
-import { Song, TeamMember } from '@/database/simpleDatabase';
-import { useSongs, useTeamMembers } from '@/hooks/useSimpleDatabase';
-import { useThemeColor } from '@/hooks/useThemeColor';
-import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { QuickCommunication } from '@/components/QuickCommunication';
+import { useT } from '@/context/I18nContext';
+
+const SongManagementSection = React.memo(({ 
+  songs, 
+  isLoading, 
+  error, 
+  canManageSongs, 
+  onAddSong, 
+  onEditSong, 
+  onDeleteSong 
+}: any) => {
+  const t = useT();
+
+  if (isLoading) {
+    return <LoadingIndicator />;
+  }
+
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <ThemedText style={styles.errorText}>{t('songs.loadError')}</ThemedText>
+        <ThemedText style={styles.errorSubtext}>{error}</ThemedText>
+      </View>
+    );
+  }
+
+  if (!canManageSongs) {
+    return (
+      <EmptyState
+        icon="eye-outline"
+        title={t('common.readonlyMode')}
+        message={t('songs.readonlyMessage')}
+      />
+    );
+  }
+
+  return (
+    <View style={styles.section}>
+      <SectionHeader
+        title={t('worships.songs')}
+        icon="musical-notes"
+        action={canManageSongs && (
+          <TouchableOpacity style={styles.addButton} onPress={onAddSong}>
+            <Ionicons name="add" size={20} color="white" />
+            <ThemedText style={styles.addButtonText}>{t('songs.add')}</ThemedText>
+          </TouchableOpacity>
+        )}
+      />
+      
+      {songs.length > 0 ? (
+        <View style={styles.itemsList}>
+          {songs.map((song: Song) => (
+            <View key={song.id} style={styles.itemCard}>
+              <View style={styles.itemInfo}>
+                <ThemedText style={styles.itemTitle}>{song.title}</ThemedText>
+                <ThemedText style={styles.itemArtist}>{song.artist}</ThemedText>
+                <View style={styles.itemMeta}>
+                  <StatusBadge
+                    status="info"
+                    text={`${song.key || 'C'} - ${song.tempo || 'Medium'}`}
+                  />
+                  <StatusBadge
+                    status="success"
+                    text={`${song.category || 'Louange'}`}
+                  />
+                </View>
+              </View>
+              <View style={styles.itemActions}>
+                <TouchableOpacity style={styles.actionButton} onPress={() => onEditSong(song.id)}>
+                  <Ionicons name="pencil" size={16} color={useThemeColor({}, 'primary')} />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.actionButton} onPress={() => onDeleteSong(song.id)}>
+                  <Ionicons name="trash" size={16} color={useThemeColor({}, 'error')} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))}
+        </View>
+      ) : (
+        <EmptyState
+          icon="musical-notes-outline"
+          title={t('songs.empty')}
+          message={t('songs.emptyMessage')}
+          action={canManageSongs && (
+            <TouchableOpacity style={styles.emptyActionButton} onPress={onAddSong}>
+              <Ionicons name="add" size={20} color="white" />
+              <ThemedText style={styles.emptyActionText}>{t('songs.add')}</ThemedText>
+            </TouchableOpacity>
+          )}
+        />
+      )}
+    </View>
+  );
+});
+
+const TeamManagementSection = React.memo(({ 
+  teamMembers, 
+  isLoading, 
+  error, 
+  canManageTeam, 
+  onAddMember, 
+  onEditMember, 
+  onDeleteMember 
+}: any) => {
+  const t = useT();
+
+  if (isLoading) {
+    return <LoadingIndicator />;
+  }
+
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <ThemedText style={styles.errorText}>{t('team.loadError')}</ThemedText>
+        <ThemedText style={styles.errorSubtext}>{error}</ThemedText>
+      </View>
+    );
+  }
+
+  if (!canManageTeam) {
+    return (
+      <EmptyState
+        icon="person-outline"
+        title={t('common.readonlyMode')}
+        message={t('team.readonlyMessage')}
+      />
+    );
+  }
+
+  return (
+    <View style={styles.section}>
+      <SectionHeader
+        title={t('team.title')}
+        icon="people"
+        action={canManageTeam && (
+          <TouchableOpacity style={styles.addButton} onPress={onAddMember}>
+            <Ionicons name="person-add" size={20} color="white" />
+            <ThemedText style={styles.addButtonText}>{t('team.add')}</ThemedText>
+          </TouchableOpacity>
+        )}
+      />
+      
+      {teamMembers.length > 0 ? (
+        <View style={styles.itemsList}>
+          {teamMembers.map((member: TeamMember) => (
+            <View key={member.id} style={styles.itemCard}>
+              <View style={styles.memberInfo}>
+                <View style={styles.memberAvatar}>
+                  <Ionicons name="person-circle" size={40} color={useThemeColor({}, 'primary')} />
+                </View>
+                <View style={styles.memberDetails}>
+                  <ThemedText style={styles.memberName}>{member.name}</ThemedText>
+                  <ThemedText style={styles.memberRole}>{member.role}</ThemedText>
+                  <ThemedText style={styles.memberContact}>
+                    📞 {member.phone || t('common.notSpecified')} | ✉️ {member.email || t('common.notSpecified')}
+                  </ThemedText>
+                </View>
+              </View>
+              <View style={styles.itemActions}>
+                <TouchableOpacity style={styles.actionButton} onPress={() => onEditMember(member.id)}>
+                  <Ionicons name="pencil" size={16} color={useThemeColor({}, 'primary')} />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.actionButton} onPress={() => onDeleteMember(member.id)}>
+                  <Ionicons name="trash" size={16} color={useThemeColor({}, 'error')} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))}
+        </View>
+      ) : (
+        <EmptyState
+          icon="people-outline"
+          title={t('team.empty')}
+          message={t('team.emptyMessage')}
+          action={canManageTeam && (
+            <TouchableOpacity style={styles.emptyActionButton} onPress={onAddMember}>
+              <Ionicons name="person-add" size={20} color="white" />
+              <ThemedText style={styles.emptyActionText}>{t('team.add')}</ThemedText>
+            </TouchableOpacity>
+          )}
+        />
+      )}
+    </View>
+  );
+});
+
+const WorshipManagementSection = React.memo(({ 
+  worships, 
+  canManageWorship, 
+  onAddWorship, 
+  onEditWorship, 
+  onDeleteWorship 
+}: any) => {
+  const t = useT();
+
+  return (
+    <View style={styles.section}>
+      <SectionHeader
+        title={t('worships.upcoming')}
+        icon="calendar"
+        action={canManageWorship && (
+          <TouchableOpacity style={styles.addButton} onPress={onAddWorship}>
+            <Ionicons name="add" size={20} color="white" />
+            <ThemedText style={styles.addButtonText}>{t('worships.add')}</ThemedText>
+          </TouchableOpacity>
+        )}
+      />
+      
+      <WorshipDetailsForm />
+      
+      {canManageWorship && worships.length > 0 ? (
+        <View style={styles.itemsList}>
+          {worships.map((worship: Worship) => (
+            <View key={worship.id} style={styles.itemCard}>
+              <View style={styles.worshipInfo}>
+                <ThemedText style={styles.worshipTitle}>{worship.title}</ThemedText>
+                <View style={styles.worshipMeta}>
+                  <View style={styles.worshipDateTime}>
+                    <Ionicons name="calendar" size={16} color={useThemeColor({}, 'secondary')} />
+                    <ThemedText style={styles.worshipDateTimeText}>
+                      {worship.date} {t('worships.at')} {worship.time}
+                    </ThemedText>
+                  </View>
+                  <View style={styles.worshipLocation}>
+                    <Ionicons name="location" size={16} color={useThemeColor({}, 'secondary')} />
+                    <ThemedText style={styles.worshipLocationText}>
+                      {worship.location}
+                    </ThemedText>
+                  </View>
+                </View>
+                <ThemedText style={styles.worshipTheme}>
+                  {t('worships.theme')}: {worship.theme}
+                </ThemedText>
+                <ThemedText style={styles.worshipPreacher}>
+                  {t('worships.preacher')}: {worship.preacher}
+                </ThemedText>
+              </View>
+              <View style={styles.itemActions}>
+                <TouchableOpacity style={styles.actionButton} onPress={() => onEditWorship(worship.id)}>
+                  <Ionicons name="pencil" size={16} color={useThemeColor({}, 'primary')} />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.actionButton} onPress={() => onDeleteWorship(worship.id)}>
+                  <Ionicons name="trash" size={16} color={useThemeColor({}, 'error')} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))}
+        </View>
+      ) : canManageWorship ? (
+        <EmptyState
+          icon="calendar-outline"
+          title={t('worships.noUpcoming')}
+          message={t('worships.noUpcomingMessage')}
+          action={canManageWorship && (
+            <TouchableOpacity style={styles.emptyActionButton} onPress={onAddWorship}>
+              <Ionicons name="add" size={20} color="white" />
+              <ThemedText style={styles.emptyActionText}>{t('worships.add')}</ThemedText>
+            </TouchableOpacity>
+          )}
+        />
+      ) : (
+        <EmptyState
+          icon="calendar-outline"
+          title={t('worships.noUpcoming')}
+          message={t('worships.noUpcomingMessage')}
+        />
+      )}
+    </View>
+  );
+});
+
+const NotificationManagementSection = React.memo(({ 
+  notifications, 
+  canSendCommunications, 
+  onAddNotification, 
+  onEditNotification, 
+  onDeleteNotification 
+}: any) => {
+  const t = useT();
+
+  return (
+    <View style={styles.section}>
+      <SectionHeader
+        title={t('notifications.title')}
+        icon="chatbubbles"
+        action={canSendCommunications && (
+          <TouchableOpacity style={styles.addButton} onPress={onAddNotification}>
+            <Ionicons name="send" size={20} color="white" />
+            <ThemedText style={styles.addButtonText}>{t('notifications.add')}</ThemedText>
+          </TouchableOpacity>
+        )}
+      />
+      
+      {canSendCommunications && notifications.length > 0 ? (
+        <View style={styles.itemsList}>
+          {notifications.map((notification: NotificationData) => (
+            <View key={notification.id} style={styles.notificationCard}>
+              <View style={styles.notificationHeader}>
+                <View style={styles.notificationTitleRow}>
+                  <Ionicons 
+                    name={
+                      notification.type === 'urgent' ? 'alert-circle' :
+                      notification.type === 'warning' ? 'warning' :
+                      notification.type === 'success' ? 'checkmark-circle' :
+                      'information-circle'
+                    } 
+                    size={16} 
+                    color={
+                      notification.type === 'urgent' ? '#ef4444' :
+                      notification.type === 'warning' ? '#f59e0b' :
+                      notification.type === 'success' ? '#10b981' :
+                      '#3b82f6'
+                    } 
+                  />
+                  <ThemedText style={styles.notificationTitle}>
+                    {notification.title}
+                  </ThemedText>
+                </View>
+                <View style={styles.notificationStatus}>
+                  {notification.type === 'urgent' && (
+                    <View style={styles.urgentBadge}>
+                      <ThemedText style={styles.urgentText}>{t('notifications.urgent')}</ThemedText>
+                    </View>
+                  )}
+                </View>
+              </View>
+              
+              <ThemedText style={styles.notificationMessage}>
+                {notification.message}
+              </ThemedText>
+              
+              <View style={styles.notificationMeta}>
+                <ThemedText style={styles.notificationMetaText}>
+                  {notification.targetAudience === 'all' ? t('notifications.allMembers') :
+                   notification.targetAudience === 'musicians' ? t('notifications.musicians') :
+                   notification.targetAudience === 'leaders' ? t('notifications.leaders') :
+                   t('notifications.activeMembers')}
+                </ThemedText>
+                {notification.isScheduled && notification.scheduledDate && (
+                  <ThemedText style={styles.notificationMetaText}>
+                    {t('notifications.scheduled')}: {new Date(notification.scheduledDate).toLocaleString('fr-FR')}
+                  </ThemedText>
+                )}
+              </View>
+              
+              {canSendCommunications && (
+                <View style={styles.notificationActions}>
+                  <TouchableOpacity
+                    onPress={() => onEditNotification(notification.id)}
+                    style={[styles.actionButton, { backgroundColor: useThemeColor({}, 'primary') }]}
+                  >
+                    <Ionicons name="pencil" size={12} color="white" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => onDeleteNotification(notification.id)}
+                    style={[styles.actionButton, { backgroundColor: useThemeColor({}, 'error') }]}
+                  >
+                    <Ionicons name="trash" size={12} color="white" />
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          ))}
+        </View>
+      ) : canSendCommunications ? (
+        <EmptyState
+          icon="chatbubble-outline"
+          title={t('notifications.empty')}
+          message={t('notifications.emptyMessage')}
+          action={canSendCommunications && (
+            <TouchableOpacity style={styles.emptyActionButton} onPress={onAddNotification}>
+              <Ionicons name="send" size={20} color="white" />
+              <ThemedText style={styles.emptyActionText}>{t('notifications.send')}</ThemedText>
+            </TouchableOpacity>
+          )}
+        />
+      ) : (
+        <EmptyState
+          icon="chatbubble-outline"
+          title={t('notifications.noNew')}
+          message={t('notifications.noNewMessage')}
+        />
+      )}
+    </View>
+  );
+});
 
 export default function WorshipManagementScreen() {
+  const t = useT();
   const [currentPage, setCurrentPage] = useState('gestion-culte');
   const { width } = useWindowDimensions();
   const isNarrow = width < 840;
   const { user, hasPermission } = useAuth();
   
-  // Tous les hooks de thème au début
   const backgroundColor = useThemeColor({}, 'background');
   const primaryColor = useThemeColor({}, 'primary');
   const textColor = useThemeColor({}, 'text');
@@ -35,7 +423,6 @@ export default function WorshipManagementScreen() {
   const cardColor = useThemeColor({}, 'cardBackground');
   const borderColor = useThemeColor({}, 'mediumGray');
 
-  // États pour les modals
   const [showSongModal, setShowSongModal] = useState(false);
   const [editingSong, setEditingSong] = useState<Song | null>(null);
   const [showTeamMemberModal, setShowTeamMemberModal] = useState(false);
@@ -45,38 +432,6 @@ export default function WorshipManagementScreen() {
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [editingNotification, setEditingNotification] = useState<NotificationData | null>(null);
 
-  // États pour les données
-  const [worships, setWorships] = useState<Worship[]>([
-    {
-      id: 1,
-      title: 'Culte du Dimanche',
-      date: '2024-12-22',
-      time: '10:00',
-      location: 'Sanctuaire principal',
-      theme: 'L\'amour de Dieu',
-      preacher: 'Pasteur Martin',
-      description: 'Culte de louange et d\'adoration',
-      songs: ['Amazing Grace', 'How Great Thou Art'],
-      musicians: ['Jean Dupont', 'Marie Martin'],
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }
-  ]);
-
-  const [notifications, setNotifications] = useState<NotificationData[]>([
-    {
-      id: 1,
-      title: 'Répétition ce soir',
-      message: 'N\'oubliez pas la répétition de ce soir à 19h en salle de musique.',
-      type: 'info',
-      targetAudience: 'musicians',
-      isScheduled: false,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }
-  ]);
-
-  // Hooks pour la base de données
   const {
     songs,
     isLoading: songsLoading,
@@ -95,224 +450,282 @@ export default function WorshipManagementScreen() {
     deleteTeamMember
   } = useTeamMembers();
 
-  // Fonctions pour gérer les chants
-  const handleAddSong = () => {
+  const canManageSongs = hasPermission('canManageSongs');
+  const canManageTeam = hasPermission('canManageTeam');
+  const canManageWorship = hasPermission('canManageWorship');
+  const canSendCommunications = hasPermission('canSendCommunications');
+
+  const handleAddSong = useCallback(() => {
+    if (!canManageSongs) {
+      Alert.alert(t('common.accessDenied'), t('songs.accessDeniedAdd'));
+      return;
+    }
     setEditingSong(null);
     setShowSongModal(true);
-  };
+  }, [canManageSongs, t]);
 
-  const handleEditSong = (id: number) => {
+  const handleEditSong = useCallback((id: number) => {
+    if (!canManageSongs) {
+      Alert.alert(t('common.accessDenied'), t('songs.accessDeniedEdit'));
+      return;
+    }
     const song = songs.find(s => s.id === id);
     if (song) {
       setEditingSong(song);
       setShowSongModal(true);
     }
-  };
+  }, [canManageSongs, songs, t]);
 
-  const handleDeleteSong = async (id: number) => {
+  const handleDeleteSong = useCallback(async (id: number) => {
+    if (!canManageSongs) {
+      Alert.alert(t('common.accessDenied'), t('songs.accessDeniedDelete'));
+      return;
+    }
     try {
       await deleteSong(id);
-      Alert.alert('Succès', 'Le chant a été supprimé avec succès');
+      Alert.alert(t('common.success'), t('songs.deletedSuccess'));
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible de supprimer le chant');
+      Alert.alert(t('common.error'), t('songs.deleteError'));
     }
-  };
+  }, [canManageSongs, deleteSong, t]);
 
-  const handleSaveSong = async (songData: Omit<Song, 'id' | 'created_at' | 'updated_at'>) => {
+  const handleSaveSong = useCallback(async (songData: Omit<Song, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       if (editingSong && editingSong.id) {
         await updateSong(editingSong.id, songData);
-        Alert.alert('Succès', 'Le chant a été modifié avec succès');
+        Alert.alert(t('common.success'), t('songs.updatedSuccess'));
       } else {
         await createSong(songData);
-        Alert.alert('Succès', 'Le chant a été ajouté avec succès');
+        Alert.alert(t('common.success'), t('songs.addedSuccess'));
       }
       setShowSongModal(false);
       setEditingSong(null);
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible de sauvegarder le chant');
+      Alert.alert(t('common.error'), t('songs.saveError'));
     }
-  };
+  }, [editingSong, updateSong, createSong, t]);
 
-  const handleCloseSongModal = () => {
-    setShowSongModal(false);
-    setEditingSong(null);
-  };
-
-  // Fonctions pour gérer les membres d'équipe
-  const handleAddTeamMember = () => {
+  const handleAddTeamMember = useCallback(() => {
+    if (!canManageTeam) {
+      Alert.alert(t('common.accessDenied'), t('team.accessDeniedAdd'));
+      return;
+    }
     setEditingTeamMember(null);
     setShowTeamMemberModal(true);
-  };
+  }, [canManageTeam, t]);
 
-  const handleEditTeamMember = (id: number) => {
+  const handleEditTeamMember = useCallback((id: number) => {
+    if (!canManageTeam) {
+      Alert.alert(t('common.accessDenied'), t('team.accessDeniedEdit'));
+      return;
+    }
     const member = teamMembers.find(m => m.id === id);
     if (member) {
       setEditingTeamMember(member);
       setShowTeamMemberModal(true);
     }
-  };
+  }, [canManageTeam, teamMembers, t]);
 
-  const handleDeleteTeamMember = async (id: number) => {
+  const handleDeleteTeamMember = useCallback(async (id: number) => {
+    if (!canManageTeam) {
+      Alert.alert(t('common.accessDenied'), t('team.accessDeniedDelete'));
+      return;
+    }
     try {
       await deleteTeamMember(id);
-      Alert.alert('Succès', 'Le membre a été supprimé avec succès');
+      Alert.alert(t('common.success'), t('team.deletedSuccess'));
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible de supprimer le membre');
+      Alert.alert(t('common.error'), t('team.deleteError'));
     }
-  };
+  }, [canManageTeam, deleteTeamMember, t]);
 
-  const handleSaveTeamMember = async (memberData: Omit<TeamMember, 'id' | 'created_at' | 'updated_at'>) => {
+  const handleSaveTeamMember = useCallback(async (memberData: Omit<TeamMember, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       if (editingTeamMember && editingTeamMember.id) {
         await updateTeamMember(editingTeamMember.id, memberData);
-        Alert.alert('Succès', 'Le membre a été modifié avec succès');
+        Alert.alert(t('common.success'), t('team.updatedSuccess'));
       } else {
         await createTeamMember(memberData);
-        Alert.alert('Succès', 'Le membre a été ajouté avec succès');
+        Alert.alert(t('common.success'), t('team.addedSuccess'));
       }
       setShowTeamMemberModal(false);
       setEditingTeamMember(null);
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible de sauvegarder le membre');
+      Alert.alert(t('common.error'), t('team.saveError'));
     }
-  };
+  }, [editingTeamMember, updateTeamMember, createTeamMember, t]);
 
-  const handleCloseTeamMemberModal = () => {
-    setShowTeamMemberModal(false);
-    setEditingTeamMember(null);
-  };
+  const [localWorships, setLocalWorships] = useState<Worship[]>([
+    {
+      id: 1,
+      title: 'Culte du Dimanche',
+      date: '2024-12-22',
+      time: '10:00',
+      location: 'Sanctuaire principal',
+      theme: 'L\'amour de Dieu',
+      preacher: 'Pasteur Martin',
+      description: 'Culte de louange et d\'adoration',
+      songs: ['Amazing Grace', 'How Great Thou Art'],
+      musicians: ['Jean Dupont', 'Marie Martin'],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+  ]);
 
-  // Fonctions pour gérer les cultes
-  const handleAddWorship = () => {
+  const handleAddWorship = useCallback(() => {
+    if (!canManageWorship) {
+      Alert.alert(t('common.accessDenied'), t('worships.accessDeniedAdd'));
+      return;
+    }
     setEditingWorship(null);
     setShowWorshipModal(true);
-  };
+  }, [canManageWorship, t]);
 
-  const handleEditWorship = (id: number) => {
-    const worship = worships.find(w => w.id === id);
+  const handleEditWorship = useCallback((id: number) => {
+    if (!canManageWorship) {
+      Alert.alert(t('common.accessDenied'), t('worships.accessDeniedEdit'));
+      return;
+    }
+    const worship = localWorships.find(w => w.id === id);
     if (worship) {
       setEditingWorship(worship);
       setShowWorshipModal(true);
     }
-  };
+  }, [canManageWorship, localWorships, t]);
 
-  const handleDeleteWorship = (id: number) => {
+  const handleDeleteWorship = useCallback((id: number) => {
+    if (!canManageWorship) {
+      Alert.alert(t('common.accessDenied'), t('worships.accessDeniedDelete'));
+      return;
+    }
     Alert.alert(
-      'Confirmer la suppression',
-      'Êtes-vous sûr de vouloir supprimer ce culte ?',
+      t('common.confirmDelete'),
+      t('worships.confirmDeleteMessage'),
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Supprimer',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: () => {
-            setWorships(prev => prev.filter(w => w.id !== id));
-            Alert.alert('Succès', 'Le culte a été supprimé avec succès');
+            setLocalWorships(prev => prev.filter(w => w.id !== id));
+            Alert.alert(t('common.success'), t('worships.deletedSuccess'));
           }
         }
       ]
     );
-  };
+  }, [canManageWorship, t]);
 
-  const handleSaveWorship = (worshipData: Omit<Worship, 'id' | 'created_at' | 'updated_at'>) => {
+  const handleSaveWorship = useCallback((worshipData: Omit<Worship, 'id' | 'created_at' | 'updated_at'>) => {
     if (editingWorship && editingWorship.id) {
-      setWorships(prev => prev.map(w => 
+      setLocalWorships(prev => prev.map(w => 
         w.id === editingWorship.id 
           ? { ...w, ...worshipData, updated_at: new Date().toISOString() }
           : w
       ));
-      Alert.alert('Succès', 'Le culte a été modifié avec succès');
+      Alert.alert(t('common.success'), t('worships.updatedSuccess'));
     } else {
       const newWorship: Worship = {
         ...worshipData,
-        id: Math.max(...worships.map(w => w.id || 0), 0) + 1,
+        id: Math.max(...localWorships.map(w => w.id || 0), 0) + 1,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
-      setWorships(prev => [...prev, newWorship]);
-      Alert.alert('Succès', 'Le culte a été créé avec succès');
+      setLocalWorships(prev => [...prev, newWorship]);
+      Alert.alert(t('common.success'), t('worships.createdSuccess'));
     }
     setShowWorshipModal(false);
     setEditingWorship(null);
-  };
+  }, [editingWorship, localWorships, t]);
 
-  const handleCloseWorshipModal = () => {
-    setShowWorshipModal(false);
-    setEditingWorship(null);
-  };
+  const [localNotifications, setLocalNotifications] = useState<NotificationData[]>([
+    {
+      id: 1,
+      title: 'Répétition ce soir',
+      message: 'N\'oubliez pas la répétition de ce soir à 19h en salle de musique.',
+      type: 'info',
+      targetAudience: 'musicians',
+      isScheduled: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+  ]);
 
-  // Fonctions pour gérer les notifications
-  const handleAddNotification = () => {
+  const handleAddNotification = useCallback(() => {
+    if (!canSendCommunications) {
+      Alert.alert(t('common.accessDenied'), t('notifications.accessDeniedAdd'));
+      return;
+    }
     setEditingNotification(null);
     setShowNotificationModal(true);
-  };
+  }, [canSendCommunications, t]);
 
-  const handleEditNotification = (id: number) => {
-    const notification = notifications.find(n => n.id === id);
+  const handleEditNotification = useCallback((id: number) => {
+    if (!canSendCommunications) {
+      Alert.alert(t('common.accessDenied'), t('notifications.accessDeniedEdit'));
+      return;
+    }
+    const notification = localNotifications.find(n => n.id === id);
     if (notification) {
       setEditingNotification(notification);
       setShowNotificationModal(true);
     }
-  };
+  }, [canSendCommunications, localNotifications, t]);
 
-  const handleDeleteNotification = (id: number) => {
+  const handleDeleteNotification = useCallback((id: number) => {
+    if (!canSendCommunications) {
+      Alert.alert(t('common.accessDenied'), t('notifications.accessDeniedDelete'));
+      return;
+    }
     Alert.alert(
-      'Confirmer la suppression',
-      'Êtes-vous sûr de vouloir supprimer cette notification ?',
+      t('common.confirmDelete'),
+      t('notifications.confirmDeleteMessage'),
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Supprimer',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: () => {
-            setNotifications(prev => prev.filter(n => n.id !== id));
-            Alert.alert('Succès', 'La notification a été supprimée avec succès');
+            setLocalNotifications(prev => prev.filter(n => n.id !== id));
+            Alert.alert(t('common.success'), t('notifications.deletedSuccess'));
           }
         }
       ]
     );
-  };
+  }, [canSendCommunications, t]);
 
-  const handleSaveNotification = (notificationData: Omit<NotificationData, 'id' | 'created_at' | 'updated_at'>) => {
+  const handleSaveNotification = useCallback((notificationData: Omit<NotificationData, 'id' | 'created_at' | 'updated_at'>) => {
     if (editingNotification && editingNotification.id) {
-      setNotifications(prev => prev.map(n => 
+      setLocalNotifications(prev => prev.map(n => 
         n.id === editingNotification.id 
           ? { ...n, ...notificationData, updated_at: new Date().toISOString() }
           : n
       ));
-      Alert.alert('Succès', 'La notification a été modifiée avec succès');
+      Alert.alert(t('common.success'), t('notifications.updatedSuccess'));
     } else {
       const newNotification: NotificationData = {
         ...notificationData,
-        id: Math.max(...notifications.map(n => n.id || 0), 0) + 1,
+        id: Math.max(...localNotifications.map(n => n.id || 0), 0) + 1,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
-      setNotifications(prev => [...prev, newNotification]);
+      setLocalNotifications(prev => [...prev, newNotification]);
       
       if (notificationData.isScheduled) {
-        Alert.alert('Succès', 'La notification a été programmée avec succès');
+        Alert.alert(t('common.success'), t('notifications.scheduledSuccess'));
       } else {
-        Alert.alert('Succès', 'La notification a été envoyée avec succès');
+        Alert.alert(t('common.success'), t('notifications.sentSuccess'));
       }
     }
     setShowNotificationModal(false);
     setEditingNotification(null);
-  };
+  }, [editingNotification, localNotifications, t]);
 
-  const handleCloseNotificationModal = () => {
-    setShowNotificationModal(false);
-    setEditingNotification(null);
-  };
-
-  // Affichage des erreurs
   if (songsError || membersError) {
     return (
       <View style={[styles.container, { backgroundColor }]}>
         <View style={styles.errorContainer}>
           <ThemedText style={[styles.errorText, { color: errorColor }]}>
-            Erreur de chargement des données
+            {t('common.loadError')}
           </ThemedText>
           <ThemedText style={[styles.errorSubtext, { color: secondaryColor }]}>
             {songsError || membersError}
@@ -322,7 +735,6 @@ export default function WorshipManagementScreen() {
     );
   }
 
-  // Affichage du chargement
   if (songsLoading || membersLoading) {
     return (
       <View style={[styles.container, { backgroundColor }]}>
@@ -333,254 +745,113 @@ export default function WorshipManagementScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor }]}>
-      {/* Header */}
       <ChurchHeader currentPage={currentPage} onPageChange={setCurrentPage} />
       
       <View style={[styles.mainContent, isNarrow && { flexDirection: 'column' }]}>
-        {/* Sidebar */}
         <View style={isNarrow ? styles.sidebarMobile : undefined}>
           <ChurchSidebar currentPage={currentPage} onPageChange={setCurrentPage} />
         </View>
         
-        {/* Main content area */}
-        <ScrollView style={styles.contentArea} contentContainerStyle={[styles.contentContainer, isNarrow && { alignItems: 'stretch' }]} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          style={styles.contentArea} 
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.content}>
-            {/* Page title */}
             <ThemedText style={[styles.pageTitle, { color: textColor }]}>
-              Gestion du Culte
+              {t('worships.title')}
             </ThemedText>
             
-            {/* Worship details form */}
-            <WorshipDetailsForm />
-
-            {/* Worship services section */}
-            {hasPermission('canManageWorship') && (
-              <View style={styles.section}>
-                <View style={styles.sectionHeader}>
-                  <ThemedText style={[styles.sectionTitle, { color: textColor }]}>
-                    Cultes Programmés
-                  </ThemedText>
-                  <TouchableOpacity 
-                    style={[styles.addButton, { backgroundColor: primaryColor }]}
-                    onPress={handleAddWorship}
-                  >
-                    <Ionicons name="add" size={16} color="white" />
-                    <ThemedText style={styles.addButtonText}>
-                      Nouveau Culte
-                    </ThemedText>
-                  </TouchableOpacity>
-                </View>
-                
-                <View style={styles.worshipsList}>
-                  {worships.map((worship) => (
-                    <WorshipCard
-                      key={worship.id}
-                      id={worship.id!}
-                      title={worship.title}
-                      date={worship.date}
-                      time={worship.time}
-                      location={worship.location}
-                      theme={worship.theme}
-                      preacher={worship.preacher}
-                      songs={worship.songs}
-                      musicians={worship.musicians}
-                      onEdit={() => handleEditWorship(worship.id!)}
-                      onDelete={() => handleDeleteWorship(worship.id!)}
-                    />
-                  ))}
-                </View>
-              </View>
-            )}
-
-            {/* Notifications section */}
-            {hasPermission('canSendCommunications') && (
-              <View style={styles.section}>
-                <View style={styles.sectionHeader}>
-                  <ThemedText style={[styles.sectionTitle, { color: textColor }]}>
-                    Gestion des Notifications
-                  </ThemedText>
-                  <TouchableOpacity 
-                    style={[styles.addButton, { backgroundColor: primaryColor }]}
-                    onPress={handleAddNotification}
-                  >
-                    <Ionicons name="send" size={16} color="white" />
-                    <ThemedText style={styles.addButtonText}>
-                      Nouvelle Notification
-                    </ThemedText>
-                  </TouchableOpacity>
-                </View>
-                
-                <View style={styles.notificationsList}>
-                  {notifications.map((notification) => (
-                    <View key={notification.id} style={[styles.notificationCard, { backgroundColor: cardColor, borderColor }]}>
-                      <View style={styles.notificationHeader}>
-                        <View style={styles.notificationTitleRow}>
-                          <Ionicons 
-                            name={
-                              notification.type === 'urgent' ? 'alert-circle' :
-                              notification.type === 'warning' ? 'warning' :
-                              notification.type === 'success' ? 'checkmark-circle' :
-                              'information-circle'
-                            } 
-                            size={16} 
-                            color={
-                              notification.type === 'urgent' ? '#ef4444' :
-                              notification.type === 'warning' ? '#f59e0b' :
-                              notification.type === 'success' ? '#10b981' :
-                              '#3b82f6'
-                            } 
-                          />
-                          <ThemedText style={[styles.notificationTitle, { color: textColor }]}>
-                            {notification.title}
-                          </ThemedText>
-                        </View>
-                        <View style={styles.notificationActions}>
-                          <TouchableOpacity
-                            onPress={() => handleEditNotification(notification.id!)}
-                            style={[styles.actionButton, { backgroundColor: primaryColor }]}
-                          >
-                            <Ionicons name="pencil" size={12} color="white" />
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            onPress={() => handleDeleteNotification(notification.id!)}
-                            style={[styles.actionButton, { backgroundColor: errorColor }]}
-                          >
-                            <Ionicons name="trash" size={12} color="white" />
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                      <ThemedText style={[styles.notificationMessage, { color: secondaryColor }]}>
-                        {notification.message}
-                      </ThemedText>
-                      <View style={styles.notificationMeta}>
-                        <ThemedText style={[styles.notificationMetaText, { color: secondaryColor }]}>
-                          Pour: {
-                            notification.targetAudience === 'all' ? 'Tous les membres' :
-                            notification.targetAudience === 'musicians' ? 'Musiciens' :
-                            notification.targetAudience === 'leaders' ? 'Responsables' :
-                            'Membres actifs'
-                          }
-                        </ThemedText>
-                        {notification.isScheduled && notification.scheduledDate && (
-                          <ThemedText style={[styles.notificationMetaText, { color: secondaryColor }]}>
-                            Programmée: {new Date(notification.scheduledDate).toLocaleString('fr-FR')}
-                          </ThemedText>
-                        )}
-                      </View>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            )}
+            <PermissionGate permission="canManageSongs">
+              <SongManagementSection
+                songs={songs}
+                isLoading={songsLoading}
+                error={songsError}
+                canManageSongs={canManageSongs}
+                onAddSong={handleAddSong}
+                onEditSong={handleEditSong}
+                onDeleteSong={handleDeleteSong}
+              />
+            </PermissionGate>
             
-            {/* Musical repertoire section */}
+            <PermissionGate permission="canManageTeam">
+              <TeamManagementSection
+                teamMembers={teamMembers}
+                isLoading={membersLoading}
+                error={membersError}
+                canManageTeam={canManageTeam}
+                onAddMember={handleAddTeamMember}
+                onEditMember={handleEditTeamMember}
+                onDeleteMember={handleDeleteTeamMember}
+              />
+            </PermissionGate>
+            
+            <PermissionGate permission="canManageWorship">
+              <WorshipManagementSection
+                worships={localWorships}
+                canManageWorship={canManageWorship}
+                onAddWorship={handleAddWorship}
+                onEditWorship={handleEditWorship}
+                onDeleteWorship={handleDeleteWorship}
+              />
+            </PermissionGate>
+            
+            <PermissionGate permission="canSendCommunications">
+              <NotificationManagementSection
+                notifications={localNotifications}
+                canSendCommunications={canSendCommunications}
+                onAddNotification={handleAddNotification}
+                onEditNotification={handleEditNotification}
+                onDeleteNotification={handleDeleteNotification}
+              />
+            </PermissionGate>
+            
             <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <ThemedText style={[styles.sectionTitle, { color: textColor }]}>
-                  Répertoire Musical
-                </ThemedText>
-                <TouchableOpacity 
-                  style={[styles.addButton, { backgroundColor: primaryColor }]}
-                  onPress={handleAddSong}
-                >
-                  <Ionicons name="add" size={16} color="white" />
-                  <ThemedText style={styles.addButtonText}>
-                    Ajouter un Chant
-                  </ThemedText>
-                </TouchableOpacity>
-              </View>
-              
-              <View style={styles.songsList}>
-                {songs.map((song) => (
-                  <ManagedSongCard
-                    key={song.id}
-                    title={song.title}
-                    artist={song.artist}
-                    keySignature={song.key}
-                    tempo={song.tempo}
-                    duration={song.duration}
-                    category={song.category}
-                    notes={song.notes}
-                    lyrics={song.lyrics}
-                    onEdit={() => handleEditSong(song.id!)}
-                    onDelete={() => handleDeleteSong(song.id!)}
-                  />
-                ))}
-              </View>
+              <QuickCommunication />
             </View>
-            
-            {/* Team management section */}
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <ThemedText style={[styles.sectionTitle, { color: textColor }]}>
-                  Attribution des Musiciens
-                </ThemedText>
-                <TouchableOpacity 
-                  style={[styles.addButton, { backgroundColor: primaryColor }]}
-                  onPress={handleAddTeamMember}
-                >
-                  <Ionicons name="person-add" size={16} color="white" />
-                  <ThemedText style={styles.addButtonText}>
-                    Ajouter un Membre
-                  </ThemedText>
-                </TouchableOpacity>
-              </View>
-              
-              <View style={styles.teamList}>
-                {teamMembers.map((member) => (
-                  <TeamMemberCard
-                    key={member.id}
-                    id={member.id!}
-                    name={member.name}
-                    role={member.role}
-                    phone={member.phone}
-                    email={member.email}
-                    avatarUrl={member.avatar_url}
-                    onEdit={() => handleEditTeamMember(member.id!)}
-                    onDelete={() => handleDeleteTeamMember(member.id!)}
-                  />
-                ))}
-              </View>
-            </View>
-            
-            {/* Quick communication section */}
-            <QuickCommunication />
           </View>
         </ScrollView>
       </View>
       
-      {/* Footer */}
       <ChurchFooter />
 
-      {/* Modal pour ajouter/modifier un chant */}
       <SongFormModal
         visible={showSongModal}
         song={editingSong}
-        onClose={handleCloseSongModal}
+        onClose={() => {
+          setShowSongModal(false);
+          setEditingSong(null);
+        }}
         onSave={handleSaveSong}
       />
 
-      {/* Modal pour ajouter/modifier un membre d'équipe */}
       <TeamMemberFormModal
         visible={showTeamMemberModal}
         member={editingTeamMember}
-        onClose={handleCloseTeamMemberModal}
+        onClose={() => {
+          setShowTeamMemberModal(false);
+          setEditingTeamMember(null);
+        }}
         onSave={handleSaveTeamMember}
       />
 
-      {/* Modal pour ajouter/modifier un culte */}
       <WorshipFormModal
         visible={showWorshipModal}
         worship={editingWorship}
-        onClose={handleCloseWorshipModal}
+        onClose={() => {
+          setShowWorshipModal(false);
+          setEditingWorship(null);
+        }}
         onSave={handleSaveWorship}
       />
 
-      {/* Modal pour ajouter/modifier une notification */}
       <NotificationFormModal
         visible={showNotificationModal}
         notification={editingNotification}
-        onClose={handleCloseNotificationModal}
+        onClose={() => {
+          setShowNotificationModal(false);
+          setEditingNotification(null);
+        }}
         onSave={handleSaveNotification}
       />
     </View>
@@ -590,64 +861,19 @@ export default function WorshipManagementScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  mainContent: {
-    flex: 1,
-    flexDirection: 'row',
+    backgroundColor: '#f5f5f5',
   },
   contentArea: {
     flex: 1,
   },
-  contentContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 24,
-  },
   content: {
-    padding: 24,
+    padding: 20,
+    maxWidth: 1200,
     width: '100%',
-    maxWidth: 900,
     alignSelf: 'center',
   },
-  sidebarMobile: {
-    alignSelf: 'stretch',
-    marginBottom: 8,
-  },
-  pageTitle: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    marginBottom: 24,
-  },
   section: {
-    marginBottom: 32,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    gap: 8,
-  },
-  addButtonText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  songsList: {
-    gap: 8,
-  },
-  teamList: {
-    gap: 8,
+    marginBottom: 24,
   },
   errorContainer: {
     flex: 1,
@@ -657,25 +883,152 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '600',
+    color: '#e74c3c',
     marginBottom: 8,
-    textAlign: 'center',
   },
   errorSubtext: {
     fontSize: 14,
+    color: '#666',
     textAlign: 'center',
-    lineHeight: 20,
   },
-  worshipsList: {
-    gap: 12,
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#3498db',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
-  notificationsList: {
-    gap: 12,
+  addButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  itemsList: {
+    gap: 8,
+  },
+  itemCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 10,
+    elevation: 2,
+    marginBottom: 8,
+  },
+  itemInfo: {
+    flex: 1,
+  },
+  itemTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#11181C',
+  },
+  itemArtist: {
+    fontSize: 14,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  itemMeta: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 6,
+  },
+  itemActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  actionButton: {
+    padding: 8,
+  },
+  emptyActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#3498db',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  emptyActionText: {
+    color: '#fff',
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  memberInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  memberAvatar: {
+    marginRight: 12,
+  },
+  memberDetails: {
+    flex: 1,
+  },
+  memberName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#11181C',
+  },
+  memberRole: {
+    fontSize: 14,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  memberContact: {
+    fontSize: 12,
+    color: '#94a3b8',
+    marginTop: 4,
+  },
+  worshipInfo: {
+    flex: 1,
+  },
+  worshipTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#11181C',
+    marginBottom: 8,
+  },
+  worshipMeta: {
+    gap: 4,
+    marginBottom: 8,
+  },
+  worshipDateTime: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  worshipDateTimeText: {
+    fontSize: 14,
+    color: '#64748b',
+  },
+  worshipLocation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  worshipLocationText: {
+    fontSize: 14,
+    color: '#64748b',
+  },
+  worshipTheme: {
+    fontSize: 14,
+    color: '#64748b',
+    marginTop: 4,
+  },
+  worshipPreacher: {
+    fontSize: 14,
+    color: '#64748b',
+    marginTop: 2,
   },
   notificationCard: {
+    backgroundColor: '#fff',
     padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
+    borderRadius: 10,
+    elevation: 2,
+    marginBottom: 8,
   },
   notificationHeader: {
     flexDirection: 'row',
@@ -686,34 +1039,65 @@ const styles = StyleSheet.create({
   notificationTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
     flex: 1,
+    gap: 8,
   },
   notificationTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
+    color: '#11181C',
     flex: 1,
   },
-  notificationActions: {
+  notificationStatus: {
     flexDirection: 'row',
-    gap: 6,
-  },
-  actionButton: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
     alignItems: 'center',
-    justifyContent: 'center',
+  },
+  urgentBadge: {
+    backgroundColor: '#ef4444',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  urgentText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
   },
   notificationMessage: {
     fontSize: 14,
-    lineHeight: 20,
+    color: '#64748b',
     marginBottom: 8,
+    lineHeight: 20,
   },
   notificationMeta: {
-    gap: 4,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 8,
   },
   notificationMetaText: {
     fontSize: 12,
+    color: '#94a3b8',
+  },
+  notificationActions: {
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'flex-end',
+  },
+  mainContent: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  sidebarMobile: {
+    width: '100%',
+  },
+  contentContainer: {
+    flexGrow: 1,
+  },
+  pageTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#11181C',
+    marginBottom: 24,
   },
 });

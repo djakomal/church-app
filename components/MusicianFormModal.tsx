@@ -11,6 +11,7 @@ import {
   View
 } from 'react-native';
 import { ThemedText } from './ThemedText';
+import { useT } from '@/context/I18nContext';
 
 export interface Musician {
   id?: number;
@@ -18,9 +19,9 @@ export interface Musician {
   email: string;
   phone: string;
   type: 'chantre' | 'instrumentiste';
-  voiceType?: 'soprano' | 'alto' | 'tenor' | 'basse';
+  voiceType?: string;
   instruments?: string[];
-  availability: string[];
+  availability?: string[];
   notes?: string;
   created_at?: string;
   updated_at?: string;
@@ -53,6 +54,8 @@ export function MusicianFormModal({ visible, musician, onClose, onSave }: Musici
   const placeholderColor = useThemeColor({}, 'secondary');
   const cardColor = useThemeColor({}, 'cardBackground');
 
+  const t = useT();
+
   useEffect(() => {
     if (musician) {
       setFormData({
@@ -62,7 +65,7 @@ export function MusicianFormModal({ visible, musician, onClose, onSave }: Musici
         type: musician.type,
         voiceType: musician.voiceType,
         instruments: musician.instruments || [],
-        availability: musician.availability,
+        availability: musician.availability || [],
         notes: musician.notes || ''
       });
     } else {
@@ -81,24 +84,23 @@ export function MusicianFormModal({ visible, musician, onClose, onSave }: Musici
 
   const handleSave = () => {
     if (!formData.name.trim()) {
-      Alert.alert('Erreur', 'Le nom est obligatoire');
+      Alert.alert(t('error'), t('musicianFormModal.nameRequired'));
       return;
     }
 
     if (!formData.email.trim()) {
-      Alert.alert('Erreur', 'L\'email est obligatoire');
+      Alert.alert(t('error'), t('musicianFormModal.emailRequired'));
       return;
     }
 
-    // Validation email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
-      Alert.alert('Erreur', 'Veuillez saisir un email valide');
+      Alert.alert(t('error'), t('musicianFormModal.invalidEmail'));
       return;
     }
 
     if (formData.type === 'instrumentiste' && formData.instruments!.length === 0) {
-      Alert.alert('Erreur', 'Veuillez spécifier au moins un instrument');
+      Alert.alert(t('error'), t('musicianFormModal.instrumentRequired'));
       return;
     }
 
@@ -106,10 +108,10 @@ export function MusicianFormModal({ visible, musician, onClose, onSave }: Musici
   };
 
   const voiceTypes = [
-    { value: 'soprano', label: 'Soprano', icon: 'musical-note' },
-    { value: 'alto', label: 'Alto', icon: 'musical-note' },
-    { value: 'tenor', label: 'Ténor', icon: 'musical-note' },
-    { value: 'basse', label: 'Basse', icon: 'musical-note' }
+    { value: 'soprano', label: t('musicianFormModal.voiceSoprano'), icon: 'musical-note' },
+    { value: 'alto', label: t('musicianFormModal.voiceAlto'), icon: 'musical-note' },
+    { value: 'tenor', label: t('musicianFormModal.voiceTenor'), icon: 'musical-note' },
+    { value: 'basse', label: t('musicianFormModal.voiceBass'), icon: 'musical-note' }
   ];
 
   const commonInstruments = [
@@ -165,43 +167,42 @@ export function MusicianFormModal({ visible, musician, onClose, onSave }: Musici
             <Ionicons name="close" size={24} color={textColor} />
           </TouchableOpacity>
           <ThemedText style={[styles.title, { color: textColor }]}>
-            {musician ? 'Modifier le Musicien' : 'Nouveau Musicien'}
+            {musician ? t('musicianFormModal.editTitle') : t('musicianFormModal.addTitle')}
           </ThemedText>
           <TouchableOpacity onPress={handleSave} style={[styles.saveButton, { backgroundColor: primaryColor }]}>
-            <ThemedText style={styles.saveButtonText}>Sauvegarder</ThemedText>
+            <ThemedText style={styles.saveButtonText}>{t('save')}</ThemedText>
           </TouchableOpacity>
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.form}>
-            {/* Informations personnelles */}
             <View style={styles.section}>
               <ThemedText style={[styles.sectionTitle, { color: textColor }]}>
-                Informations personnelles
+                {t('musicianFormModal.personalInfo')}
               </ThemedText>
 
               <View style={styles.inputGroup}>
                 <ThemedText style={[styles.label, { color: textColor }]}>
-                  Nom complet *
+                  {t('musicianFormModal.fullName')}
                 </ThemedText>
                 <TextInput
                   style={[styles.input, { color: textColor, borderColor }]}
                   value={formData.name}
                   onChangeText={(text) => setFormData({ ...formData, name: text })}
-                  placeholder="Ex: Jean Dupont"
+                  placeholder={t('musicianFormModal.fullNamePlaceholder')}
                   placeholderTextColor={placeholderColor}
                 />
               </View>
 
               <View style={styles.inputGroup}>
                 <ThemedText style={[styles.label, { color: textColor }]}>
-                  Email *
+                  {t('musicianFormModal.email')}
                 </ThemedText>
                 <TextInput
                   style={[styles.input, { color: textColor, borderColor }]}
                   value={formData.email}
                   onChangeText={(text) => setFormData({ ...formData, email: text })}
-                  placeholder="jean.dupont@email.com"
+                  placeholder={t('musicianFormModal.emailPlaceholder')}
                   placeholderTextColor={placeholderColor}
                   keyboardType="email-address"
                   autoCapitalize="none"
@@ -210,23 +211,22 @@ export function MusicianFormModal({ visible, musician, onClose, onSave }: Musici
 
               <View style={styles.inputGroup}>
                 <ThemedText style={[styles.label, { color: textColor }]}>
-                  Téléphone
+                  {t('musicianFormModal.phone')}
                 </ThemedText>
                 <TextInput
                   style={[styles.input, { color: textColor, borderColor }]}
                   value={formData.phone}
                   onChangeText={(text) => setFormData({ ...formData, phone: text })}
-                  placeholder="06 12 34 56 78"
+                  placeholder={t('musicianFormModal.phonePlaceholder')}
                   placeholderTextColor={placeholderColor}
                   keyboardType="phone-pad"
                 />
               </View>
             </View>
 
-            {/* Type de musicien */}
             <View style={styles.section}>
               <ThemedText style={[styles.sectionTitle, { color: textColor }]}>
-                Type de musicien
+                {t('musicianFormModal.musicianType')}
               </ThemedText>
 
               <View style={styles.typeSelector}>
@@ -247,7 +247,7 @@ export function MusicianFormModal({ visible, musician, onClose, onSave }: Musici
                     styles.typeLabel, 
                     { color: formData.type === 'chantre' ? textColor : secondaryColor }
                   ]}>
-                    Chantre
+                    {t('musicianFormModal.singer')}
                   </ThemedText>
                 </TouchableOpacity>
 
@@ -268,17 +268,16 @@ export function MusicianFormModal({ visible, musician, onClose, onSave }: Musici
                     styles.typeLabel, 
                     { color: formData.type === 'instrumentiste' ? textColor : secondaryColor }
                   ]}>
-                    Instrumentiste
+                    {t('musicianFormModal.instrumentalist')}
                   </ThemedText>
                 </TouchableOpacity>
               </View>
             </View>
 
-            {/* Type de voix (pour les chantres) */}
             {formData.type === 'chantre' && (
               <View style={styles.section}>
                 <ThemedText style={[styles.sectionTitle, { color: textColor }]}>
-                  Type de voix
+                  {t('musicianFormModal.voiceType')}
                 </ThemedText>
 
                 <View style={styles.voiceGrid}>
@@ -309,11 +308,10 @@ export function MusicianFormModal({ visible, musician, onClose, onSave }: Musici
               </View>
             )}
 
-            {/* Instruments (pour les instrumentistes) */}
             {formData.type === 'instrumentiste' && (
               <View style={styles.section}>
                 <ThemedText style={[styles.sectionTitle, { color: textColor }]}>
-                  Instruments *
+                  {t('musicianFormModal.instruments')}
                 </ThemedText>
 
                 <View style={styles.instrumentsGrid}>
@@ -346,10 +344,9 @@ export function MusicianFormModal({ visible, musician, onClose, onSave }: Musici
               </View>
             )}
 
-            {/* Disponibilités */}
             <View style={styles.section}>
               <ThemedText style={[styles.sectionTitle, { color: textColor }]}>
-                Disponibilités
+                {t('musicianFormModal.availability')}
               </ThemedText>
 
               <View style={styles.availabilityGrid}>
@@ -359,7 +356,7 @@ export function MusicianFormModal({ visible, musician, onClose, onSave }: Musici
                     style={[
                       styles.availabilityOption,
                       { backgroundColor: cardColor, borderColor },
-                      formData.availability.includes(availability) && { 
+                      formData.availability?.includes(availability) && { 
                         borderColor: primaryColor, 
                         borderWidth: 2,
                         backgroundColor: `${primaryColor}20`
@@ -369,11 +366,11 @@ export function MusicianFormModal({ visible, musician, onClose, onSave }: Musici
                   >
                     <ThemedText style={[
                       styles.availabilityLabel, 
-                      { color: formData.availability.includes(availability) ? primaryColor : textColor }
+                      { color: formData.availability?.includes(availability) ? primaryColor : textColor }
                     ]}>
                       {availability}
                     </ThemedText>
-                    {formData.availability.includes(availability) && (
+                    {formData.availability?.includes(availability) && (
                       <Ionicons name="checkmark" size={16} color={primaryColor} />
                     )}
                   </TouchableOpacity>
@@ -381,17 +378,16 @@ export function MusicianFormModal({ visible, musician, onClose, onSave }: Musici
               </View>
             </View>
 
-            {/* Notes */}
             <View style={styles.section}>
               <ThemedText style={[styles.sectionTitle, { color: textColor }]}>
-                Notes additionnelles
+                {t('musicianFormModal.extraNotes')}
               </ThemedText>
 
               <TextInput
                 style={[styles.textArea, { color: textColor, borderColor }]}
                 value={formData.notes}
                 onChangeText={(text) => setFormData({ ...formData, notes: text })}
-                placeholder="Informations complémentaires, expérience, préférences..."
+                placeholder={t('musicianFormModal.notesPlaceholder')}
                 placeholderTextColor={placeholderColor}
                 multiline
                 numberOfLines={4}

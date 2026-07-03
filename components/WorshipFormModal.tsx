@@ -11,6 +11,7 @@ import {
   View
 } from 'react-native';
 import { ThemedText } from './ThemedText';
+import { useT } from '@/context/I18nContext';
 
 export interface Worship {
   id?: number;
@@ -18,11 +19,11 @@ export interface Worship {
   date: string;
   time: string;
   location: string;
-  theme: string;
-  preacher: string;
-  description: string;
-  songs: string[];
-  musicians: string[];
+  theme?: string;
+  preacher?: string;
+  description?: string;
+  songs?: string[];
+  musicians?: string[];
   created_at?: string;
   updated_at?: string;
 }
@@ -54,6 +55,8 @@ export function WorshipFormModal({ visible, worship, onClose, onSave }: WorshipF
   const borderColor = useThemeColor({}, 'mediumGray');
   const placeholderColor = useThemeColor({}, 'secondary');
 
+  const t = useT();
+
   useEffect(() => {
     if (worship) {
       setFormData({
@@ -61,11 +64,11 @@ export function WorshipFormModal({ visible, worship, onClose, onSave }: WorshipF
         date: worship.date,
         time: worship.time,
         location: worship.location,
-        theme: worship.theme,
-        preacher: worship.preacher,
-        description: worship.description,
-        songs: worship.songs,
-        musicians: worship.musicians
+        theme: worship.theme || '',
+        preacher: worship.preacher || '',
+        description: worship.description || '',
+        songs: worship.songs || [],
+        musicians: worship.musicians || []
       });
     } else {
       setFormData({
@@ -84,31 +87,29 @@ export function WorshipFormModal({ visible, worship, onClose, onSave }: WorshipF
 
   const handleSave = () => {
     if (!formData.title.trim()) {
-      Alert.alert('Erreur', 'Le titre est obligatoire');
+      Alert.alert(t('error'), t('worshipFormModal.titleRequired'));
       return;
     }
 
     if (!formData.date.trim()) {
-      Alert.alert('Erreur', 'La date est obligatoire');
+      Alert.alert(t('error'), t('worshipFormModal.dateRequired'));
       return;
     }
 
     if (!formData.time.trim()) {
-      Alert.alert('Erreur', 'L\'heure est obligatoire');
+      Alert.alert(t('error'), t('worshipFormModal.timeRequired'));
       return;
     }
 
-    // Validation du format de date
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(formData.date)) {
-      Alert.alert('Erreur', 'Format de date invalide (YYYY-MM-DD)');
+      Alert.alert(t('error'), t('worshipFormModal.invalidDate'));
       return;
     }
 
-    // Validation du format d'heure
     const timeRegex = /^\d{2}:\d{2}$/;
     if (!timeRegex.test(formData.time)) {
-      Alert.alert('Erreur', 'Format d\'heure invalide (HH:MM)');
+      Alert.alert(t('error'), t('worshipFormModal.invalidTime'));
       return;
     }
 
@@ -141,34 +142,32 @@ export function WorshipFormModal({ visible, worship, onClose, onSave }: WorshipF
             <Ionicons name="close" size={24} color={textColor} />
           </TouchableOpacity>
           <ThemedText style={[styles.title, { color: textColor }]}>
-            {worship ? 'Modifier le Culte' : 'Nouveau Culte'}
+            {worship ? t('worshipFormModal.editTitle') : t('worshipFormModal.addTitle')}
           </ThemedText>
           <TouchableOpacity onPress={handleSave} style={[styles.saveButton, { backgroundColor: primaryColor }]}>
-            <ThemedText style={styles.saveButtonText}>Sauvegarder</ThemedText>
+            <ThemedText style={styles.saveButtonText}>{t('save')}</ThemedText>
           </TouchableOpacity>
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.form}>
-            {/* Titre */}
             <View style={styles.inputGroup}>
               <ThemedText style={[styles.label, { color: textColor }]}>
-                Titre du Culte *
+                {t('worshipFormModal.worshipTitle')}
               </ThemedText>
               <TextInput
                 style={[styles.input, { color: textColor, borderColor }]}
                 value={formData.title}
                 onChangeText={(text) => setFormData({ ...formData, title: text })}
-                placeholder="Ex: Culte du Dimanche"
+                placeholder={t('worshipFormModal.worshipTitlePlaceholder')}
                 placeholderTextColor={placeholderColor}
               />
             </View>
 
-            {/* Date et Heure */}
             <View style={styles.row}>
               <View style={[styles.inputGroup, { flex: 1 }]}>
                 <ThemedText style={[styles.label, { color: textColor }]}>
-                  Date *
+                  {t('worshipFormModal.date')}
                 </ThemedText>
                 <TextInput
                   style={[styles.input, { color: textColor, borderColor }]}
@@ -186,7 +185,7 @@ export function WorshipFormModal({ visible, worship, onClose, onSave }: WorshipF
 
               <View style={[styles.inputGroup, { flex: 1 }]}>
                 <ThemedText style={[styles.label, { color: textColor }]}>
-                  Heure *
+                  {t('worshipFormModal.time')}
                 </ThemedText>
                 <TextInput
                   style={[styles.input, { color: textColor, borderColor }]}
@@ -198,58 +197,54 @@ export function WorshipFormModal({ visible, worship, onClose, onSave }: WorshipF
               </View>
             </View>
 
-            {/* Lieu */}
             <View style={styles.inputGroup}>
               <ThemedText style={[styles.label, { color: textColor }]}>
-                Lieu
+                {t('worshipFormModal.location')}
               </ThemedText>
               <TextInput
                 style={[styles.input, { color: textColor, borderColor }]}
                 value={formData.location}
                 onChangeText={(text) => setFormData({ ...formData, location: text })}
-                placeholder="Ex: Sanctuaire principal"
+                placeholder={t('worshipFormModal.locationPlaceholder')}
                 placeholderTextColor={placeholderColor}
               />
             </View>
 
-            {/* Thème */}
             <View style={styles.inputGroup}>
               <ThemedText style={[styles.label, { color: textColor }]}>
-                Thème
+                {t('worshipFormModal.theme')}
               </ThemedText>
               <TextInput
                 style={[styles.input, { color: textColor, borderColor }]}
                 value={formData.theme}
                 onChangeText={(text) => setFormData({ ...formData, theme: text })}
-                placeholder="Ex: L'amour de Dieu"
+                placeholder={t('worshipFormModal.themePlaceholder')}
                 placeholderTextColor={placeholderColor}
               />
             </View>
 
-            {/* Prédicateur */}
             <View style={styles.inputGroup}>
               <ThemedText style={[styles.label, { color: textColor }]}>
-                Prédicateur
+                {t('worshipFormModal.preacher')}
               </ThemedText>
               <TextInput
                 style={[styles.input, { color: textColor, borderColor }]}
                 value={formData.preacher}
                 onChangeText={(text) => setFormData({ ...formData, preacher: text })}
-                placeholder="Nom du prédicateur"
+                placeholder={t('worshipFormModal.preacherPlaceholder')}
                 placeholderTextColor={placeholderColor}
               />
             </View>
 
-            {/* Description */}
             <View style={styles.inputGroup}>
               <ThemedText style={[styles.label, { color: textColor }]}>
-                Description
+                {t('worshipFormModal.description')}
               </ThemedText>
               <TextInput
                 style={[styles.textArea, { color: textColor, borderColor }]}
                 value={formData.description}
                 onChangeText={(text) => setFormData({ ...formData, description: text })}
-                placeholder="Description du culte, notes spéciales..."
+                placeholder={t('worshipFormModal.descriptionPlaceholder')}
                 placeholderTextColor={placeholderColor}
                 multiline
                 numberOfLines={4}
@@ -257,19 +252,18 @@ export function WorshipFormModal({ visible, worship, onClose, onSave }: WorshipF
               />
             </View>
 
-            {/* Chants */}
             <View style={styles.inputGroup}>
               <ThemedText style={[styles.label, { color: textColor }]}>
-                Chants (séparés par des virgules)
+                {t('worshipFormModal.songs')}
               </ThemedText>
               <TextInput
                 style={[styles.textArea, { color: textColor, borderColor }]}
-                value={formData.songs.join(', ')}
+                value={formData.songs?.join(', ') || ''}
                 onChangeText={(text) => setFormData({ 
                   ...formData, 
                   songs: text.split(',').map(s => s.trim()).filter(s => s.length > 0)
                 })}
-                placeholder="Ex: Amazing Grace, How Great Thou Art"
+                placeholder={t('worshipFormModal.songsPlaceholder')}
                 placeholderTextColor={placeholderColor}
                 multiline
                 numberOfLines={3}
@@ -277,19 +271,18 @@ export function WorshipFormModal({ visible, worship, onClose, onSave }: WorshipF
               />
             </View>
 
-            {/* Musiciens */}
             <View style={styles.inputGroup}>
               <ThemedText style={[styles.label, { color: textColor }]}>
-                Musiciens (séparés par des virgules)
+                {t('worshipFormModal.musicians')}
               </ThemedText>
               <TextInput
                 style={[styles.textArea, { color: textColor, borderColor }]}
-                value={formData.musicians.join(', ')}
+                value={formData.musicians?.join(', ') || ''}
                 onChangeText={(text) => setFormData({ 
                   ...formData, 
                   musicians: text.split(',').map(s => s.trim()).filter(s => s.length > 0)
                 })}
-                placeholder="Ex: Jean Dupont, Marie Martin"
+                placeholder={t('worshipFormModal.musiciansPlaceholder')}
                 placeholderTextColor={placeholderColor}
                 multiline
                 numberOfLines={3}

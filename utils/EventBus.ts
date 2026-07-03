@@ -30,6 +30,18 @@ class EventBusClass {
       delete this.events[event];
     }
   }
+
+  removeAllListeners(event?: string): void {
+    if (event) {
+      delete this.events[event];
+    } else {
+      this.events = {};
+    }
+  }
+
+  getEventNames(): string[] {
+    return Object.keys(this.events);
+  }
 }
 
 export const EventBus = new EventBusClass();

@@ -1,6 +1,6 @@
 import { useNotifications } from '@/context/NotificationContext';
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import React, { useState } from 'react';
 import { View } from 'react-native';
 import { NotificationBadge } from './NotificationBadge';
 

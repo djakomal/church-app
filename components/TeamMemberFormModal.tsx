@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from './ThemedText';
 import { useThemeColor } from '@/hooks/useThemeColor';
+import { useT } from '@/context/I18nContext';
 
 interface TeamMember {
   id?: number;
@@ -60,6 +61,8 @@ export function TeamMemberFormModal({ visible, member, onClose, onSave }: TeamMe
   const primaryColor = useThemeColor({}, 'primary');
   const placeholderColor = useThemeColor({}, 'secondary');
 
+  const t = useT();
+
   useEffect(() => {
     if (member) {
       setFormData(member);
@@ -76,7 +79,7 @@ export function TeamMemberFormModal({ visible, member, onClose, onSave }: TeamMe
 
   const handleSave = () => {
     if (!formData.name.trim()) {
-      Alert.alert('Erreur', 'Le nom du membre est obligatoire');
+      Alert.alert(t('error'), t('teamMemberFormModal.nameRequired'));
       return;
     }
 
@@ -98,7 +101,7 @@ export function TeamMemberFormModal({ visible, member, onClose, onSave }: TeamMe
       <View style={[styles.container, { backgroundColor }]}>
         <View style={styles.header}>
           <ThemedText style={[styles.title, { color: textColor }]}>
-            {member ? 'Modifier le Membre' : 'Ajouter un Membre'}
+            {member ? t('teamMemberFormModal.editTitle') : t('teamMemberFormModal.addTitle')}
           </ThemedText>
           <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
             <Ionicons name="close" size={24} color={textColor} />
@@ -106,24 +109,22 @@ export function TeamMemberFormModal({ visible, member, onClose, onSave }: TeamMe
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          {/* Nom */}
           <View style={styles.formGroup}>
             <ThemedText style={[styles.label, { color: textColor }]}>
-              Nom complet *
+              {t('teamMemberFormModal.fullName')}
             </ThemedText>
             <TextInput
               style={[styles.input, { backgroundColor, borderColor, color: textColor }]}
               value={formData.name}
               onChangeText={(text) => setFormData({ ...formData, name: text })}
-              placeholder="Entrez le nom complet"
+              placeholder={t('teamMemberFormModal.fullNamePlaceholder')}
               placeholderTextColor={placeholderColor}
             />
           </View>
 
-          {/* Rôle */}
           <View style={styles.formGroup}>
             <ThemedText style={[styles.label, { color: textColor }]}>
-              Rôle *
+              {t('teamMemberFormModal.role')}
             </ThemedText>
             <TouchableOpacity
               style={[styles.dropdown, { backgroundColor, borderColor }]}
@@ -157,92 +158,87 @@ export function TeamMemberFormModal({ visible, member, onClose, onSave }: TeamMe
             )}
           </View>
 
-          {/* Téléphone */}
           <View style={styles.formGroup}>
             <ThemedText style={[styles.label, { color: textColor }]}>
-              Téléphone
+              {t('teamMemberFormModal.phone')}
             </ThemedText>
             <TextInput
               style={[styles.input, { backgroundColor, borderColor, color: textColor }]}
               value={formData.phone}
               onChangeText={(text) => setFormData({ ...formData, phone: text })}
-              placeholder="06 12 34 56 78"
+              placeholder={t('teamMemberFormModal.phonePlaceholder')}
               placeholderTextColor={placeholderColor}
               keyboardType="phone-pad"
             />
           </View>
 
-          {/* Email */}
           <View style={styles.formGroup}>
             <ThemedText style={[styles.label, { color: textColor }]}>
-              Email
+              {t('teamMemberFormModal.email')}
             </ThemedText>
             <TextInput
               style={[styles.input, { backgroundColor, borderColor, color: textColor }]}
               value={formData.email}
               onChangeText={(text) => setFormData({ ...formData, email: text })}
-              placeholder="exemple@email.com"
+              placeholder={t('teamMemberFormModal.emailPlaceholder')}
               placeholderTextColor={placeholderColor}
               keyboardType="email-address"
               autoCapitalize="none"
             />
           </View>
 
-          {/* URL Avatar */}
           <View style={styles.formGroup}>
             <ThemedText style={[styles.label, { color: textColor }]}>
-              Photo de profil (URL)
+              {t('teamMemberFormModal.avatarUrl')}
             </ThemedText>
             <TextInput
               style={[styles.input, { backgroundColor, borderColor, color: textColor }]}
               value={formData.avatar_url}
               onChangeText={(text) => setFormData({ ...formData, avatar_url: text })}
-              placeholder="https://exemple.com/photo.jpg"
+              placeholder={t('teamMemberFormModal.avatarUrlPlaceholder')}
               placeholderTextColor={placeholderColor}
               autoCapitalize="none"
             />
           </View>
 
-          {/* Informations sur les rôles */}
           <View style={styles.infoSection}>
             <ThemedText style={[styles.infoTitle, { color: textColor }]}>
-              Rôles disponibles :
+              {t('teamMemberFormModal.availableRoles')}
             </ThemedText>
             <View style={styles.rolesList}>
               <View style={styles.rolesColumn}>
                 <ThemedText style={[styles.roleItem, { color: useThemeColor({}, 'secondary') }]}>
-                  • Vocaliste / Chef de louange
+                  {t('teamMemberFormModal.roleItemSinger')}
                 </ThemedText>
                 <ThemedText style={[styles.roleItem, { color: useThemeColor({}, 'secondary') }]}>
-                  • Pianiste / Guitariste
+                  {t('teamMemberFormModal.roleItemPiano')}
                 </ThemedText>
                 <ThemedText style={[styles.roleItem, { color: useThemeColor({}, 'secondary') }]}>
-                  • Bassiste / Batteur
+                  {t('teamMemberFormModal.roleItemBass')}
                 </ThemedText>
               </View>
               <View style={styles.rolesColumn}>
                 <ThemedText style={[styles.roleItem, { color: useThemeColor({}, 'secondary') }]}>
-                  • Technicien son
+                  {t('teamMemberFormModal.roleItemSound')}
                 </ThemedText>
                 <ThemedText style={[styles.roleItem, { color: useThemeColor({}, 'secondary') }]}>
-                  • Projectionniste
+                  {t('teamMemberFormModal.roleItemProjection')}
                 </ThemedText>
                 <ThemedText style={[styles.roleItem, { color: useThemeColor({}, 'secondary') }]}>
-                  • Instruments divers
+                  {t('teamMemberFormModal.roleItemDiverse')}
                 </ThemedText>
               </View>
             </View>
           </View>
         </ScrollView>
 
-        {/* Boutons d'action */}
         <View style={styles.footer}>
           <TouchableOpacity
             style={[styles.cancelButton, { borderColor }]}
             onPress={handleClose}
           >
             <ThemedText style={[styles.cancelButtonText, { color: textColor }]}>
-              Annuler
+              {t('cancel')}
             </ThemedText>
           </TouchableOpacity>
           
@@ -252,7 +248,7 @@ export function TeamMemberFormModal({ visible, member, onClose, onSave }: TeamMe
           >
             <Ionicons name="checkmark" size={20} color="white" />
             <ThemedText style={styles.saveButtonText}>
-              {member ? 'Modifier' : 'Ajouter'}
+              {member ? t('team.edit') : t('team.add')}
             </ThemedText>
           </TouchableOpacity>
         </View>
@@ -321,9 +317,12 @@ const styles = StyleSheet.create({
     right: 0,
     borderRadius: 8,
     borderWidth: 1,
-    zIndex: 1000,
-    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
     maxHeight: 200,
+    zIndex: 1000,
   },
   dropdownScroll: {
     maxHeight: 200,

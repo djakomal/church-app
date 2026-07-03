@@ -5,17 +5,16 @@ import { ThemedText } from './ThemedText';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { useCommunications } from '@/hooks/useSimpleDatabase';
 import { useAuth } from '@/context/AuthContext';
+import { useT } from '@/context/I18nContext';
 
 export function QuickCommunication() {
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'info' | 'urgent' | 'reminder'>('info');
   const [showHistory, setShowHistory] = useState(false);
 
-  // Hooks
   const { communications, createCommunication } = useCommunications();
   const { hasPermission } = useAuth();
 
-  // Vérifier les permissions
   const canSendCommunications = hasPermission('canSendCommunications');
   
   const backgroundColor = useThemeColor({}, 'background');
@@ -27,6 +26,8 @@ export function QuickCommunication() {
   const warningColor = useThemeColor({}, 'warning');
   const placeholderColor = useThemeColor({}, 'secondary');
 
+  const t = useT();
+
   const quickMessages = [
     "Répétition à 18h30 ce soir",
     "N'oubliez pas vos partitions",
@@ -37,7 +38,7 @@ export function QuickCommunication() {
 
   const handleSendMessage = async () => {
     if (!message.trim()) {
-      Alert.alert('Erreur', 'Veuillez saisir un message');
+      Alert.alert(t('error'), t('quickCommunication.messageRequired'));
       return;
     }
 
@@ -50,13 +51,14 @@ export function QuickCommunication() {
 
       setMessage('');
       
+      const typeLabel = messageType === 'urgent' ? t('quickCommunication.messageUrgent') : messageType === 'reminder' ? t('quickCommunication.messageReminder') : t('quickCommunication.messageInfo');
       Alert.alert(
-        'Message envoyé',
-        `Votre ${messageType === 'urgent' ? 'message urgent' : messageType === 'reminder' ? 'rappel' : 'message'} a été envoyé à toute l'équipe.`,
+        t('quickCommunication.sentAlert'),
+        t('quickCommunication.sentAlertBody', { type: typeLabel }),
         [{ text: 'OK' }]
       );
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible d\'envoyer le message');
+      Alert.alert(t('error'), t('quickCommunication.sendError'));
     }
   };
 
@@ -80,11 +82,19 @@ export function QuickCommunication() {
     }
   };
 
+  const getMessageTypeLabel = (type: 'info' | 'urgent' | 'reminder') => {
+    switch (type) {
+      case 'info': return t('quickCommunication.info');
+      case 'reminder': return t('quickCommunication.reminder');
+      case 'urgent': return t('quickCommunication.urgent');
+    }
+  };
+
   return (
     <View style={[styles.container, { backgroundColor, borderColor }]}>
       <View style={styles.header}>
         <ThemedText style={[styles.title, { color: textColor }]}>
-          {canSendCommunications ? 'Communication Rapide' : 'Communications'}
+          {canSendCommunications ? t('quickCommunication.title') : t('quickCommunication.viewTitle')}
         </ThemedText>
         <TouchableOpacity 
           style={styles.historyButton}
@@ -92,17 +102,16 @@ export function QuickCommunication() {
         >
           <Ionicons name="time" size={20} color={primaryColor} />
           <ThemedText style={[styles.historyButtonText, { color: primaryColor }]}>
-            Historique
+            {t('comm.history')}
           </ThemedText>
         </TouchableOpacity>
       </View>
 
       {canSendCommunications ? (
         <>
-          {/* Messages rapides prédéfinis */}
           <View style={styles.quickMessagesSection}>
             <ThemedText style={[styles.sectionTitle, { color: textColor }]}>
-              Messages rapides:
+              {t('quickCommunication.quickMessages')}
             </ThemedText>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.quickMessagesScroll}>
               {quickMessages.map((quickMsg, index) => (
@@ -120,10 +129,9 @@ export function QuickCommunication() {
           </View>
           
           <View style={styles.form}>
-            {/* Type de message */}
             <View style={styles.messageTypeSection}>
               <ThemedText style={[styles.label, { color: textColor }]}>
-                Type de message:
+                {t('quickCommunication.messageType')}
               </ThemedText>
               <View style={styles.messageTypeButtons}>
                 {(['info', 'reminder', 'urgent'] as const).map((type) => (
@@ -147,7 +155,7 @@ export function QuickCommunication() {
                       styles.messageTypeText,
                       { color: messageType === type ? 'white' : getMessageTypeColor(type) }
                     ]}>
-                      {type === 'info' ? 'Info' : type === 'reminder' ? 'Rappel' : 'Urgent'}
+                      {getMessageTypeLabel(type)}
                     </ThemedText>
                   </TouchableOpacity>
                 ))}
@@ -155,14 +163,14 @@ export function QuickCommunication() {
             </View>
 
             <ThemedText style={[styles.label, { color: textColor }]}>
-              Message à envoyer:
+              {t('quickCommunication.messageLabel')}
             </ThemedText>
             
             <TextInput
               style={[styles.textArea, { backgroundColor, borderColor, color: textColor }]}
               value={message}
               onChangeText={setMessage}
-              placeholder="Écrivez votre message ici pour toute l'équipe..."
+              placeholder={t('quickCommunication.placeholder')}
               placeholderTextColor={placeholderColor}
               multiline
               numberOfLines={4}
@@ -176,7 +184,7 @@ export function QuickCommunication() {
               >
                 <Ionicons name="send" size={16} color="white" />
                 <ThemedText style={styles.sendButtonText}>
-                  Envoyer {messageType === 'urgent' ? 'Urgent' : messageType === 'reminder' ? 'Rappel' : 'Message'}
+                  {messageType === 'urgent' ? t('quickCommunication.sendUrgent') : messageType === 'reminder' ? t('quickCommunication.sendReminder') : t('quickCommunication.send')}
                 </ThemedText>
               </TouchableOpacity>
               
@@ -186,7 +194,7 @@ export function QuickCommunication() {
               >
                 <Ionicons name="refresh" size={16} color={textColor} />
                 <ThemedText style={[styles.clearButtonText, { color: textColor }]}>
-                  Effacer
+                  {t('quickCommunication.clear')}
                 </ThemedText>
               </TouchableOpacity>
             </View>
@@ -196,23 +204,22 @@ export function QuickCommunication() {
         <View style={styles.readOnlyMessage}>
           <Ionicons name="eye" size={24} color={placeholderColor} />
           <ThemedText style={[styles.readOnlyText, { color: placeholderColor }]}>
-            Vous pouvez consulter les communications mais pas en envoyer.
+            {t('quickCommunication.readOnly')}
           </ThemedText>
           <ThemedText style={[styles.readOnlySubtext, { color: placeholderColor }]}>
-            Contactez un administrateur pour obtenir les permissions d'envoi.
+            {t('quickCommunication.readOnlySubtext')}
           </ThemedText>
         </View>
       )}
 
-      {/* Historique des messages */}
       {showHistory && (
         <View style={styles.historySection}>
           <ThemedText style={[styles.sectionTitle, { color: textColor }]}>
-            Messages récents:
+            {t('quickCommunication.recentMessages')}
           </ThemedText>
           {communications.length === 0 ? (
             <ThemedText style={[styles.emptyHistoryText, { color: placeholderColor }]}>
-              Aucun message envoyé récemment
+              {t('quickCommunication.noRecent')}
             </ThemedText>
           ) : (
             <ScrollView style={styles.historyList} showsVerticalScrollIndicator={false}>
@@ -226,7 +233,7 @@ export function QuickCommunication() {
                         color={getMessageTypeColor(comm.type)} 
                       />
                       <ThemedText style={[styles.historyItemTypeText, { color: getMessageTypeColor(comm.type) }]}>
-                        {comm.type === 'info' ? 'Info' : comm.type === 'reminder' ? 'Rappel' : 'Urgent'}
+                        {getMessageTypeLabel(comm.type)}
                       </ThemedText>
                     </View>
                     <ThemedText style={[styles.historyItemTime, { color: placeholderColor }]}>

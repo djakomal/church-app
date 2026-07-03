@@ -26,6 +26,8 @@ export interface TeamMember {
   updated_at?: string;
 }
 
+export type WorshipStatus = 'draft' | 'published' | 'cancelled';
+
 export interface Worship {
   id?: number;
   title: string;
@@ -37,6 +39,9 @@ export interface Worship {
   description?: string;
   songs?: string[];
   musicians?: string[];
+  status?: WorshipStatus;
+  createdBy?: string;
+  assignedMusicians?: number[];
   created_at?: string;
   updated_at?: string;
 }
@@ -68,7 +73,7 @@ export interface Notification {
   title: string;
   message: string;
   type: 'info' | 'urgent' | 'reminder' | 'success' | 'warning';
-  targetAudience: 'all' | 'musicians' | 'leaders' | 'active_members';
+  targetAudience: 'all' | 'musicians' | 'leaders' | 'active_members' | 'chantres' | 'instrumentistes';
   isScheduled: boolean;
   scheduledDate?: string;
   sent_at: string;

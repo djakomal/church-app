@@ -25,7 +25,7 @@ export function ChatInput({ onSendMessage }: ChatInputProps) {
   return (
     <View style={[styles.container, { backgroundColor, borderColor }]}>
       <TextInput
-        style={[styles.input, { color: textColor }]}
+        style={[styles.input, { color: textColor, borderColor }]}
         value={message}
         onChangeText={setMessage}
         placeholder="Écrivez un message..."
@@ -57,7 +57,6 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
     fontSize: 14,
     maxHeight: 100,
     textAlignVertical: 'top',

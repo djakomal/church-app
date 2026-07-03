@@ -1,21 +1,24 @@
 import { LoadingIndicator } from '@/components/LoadingIndicator';
-import { SongCard } from '@/components/SongCard';
 import { ThemedText } from '@/components/ThemedText';
+import { SongCard } from '@/components/SongCard';
 import { WorshipCard } from '@/components/WorshipCard';
 import { useAuth } from '@/context/AuthContext';
+import { useT } from '@/context/I18nContext';
 import { useCommunications, useSongs, useWorships } from '@/hooks/useSimpleDatabase';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { EventBus } from '@/utils/EventBus';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
 import { router } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
-  const [currentPage, setCurrentPage] = useState('accueil');
   const [refreshing, setRefreshing] = useState(false);
   
+  const t = useT();
+  const insets = useSafeAreaInsets();
+
   const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
   const primaryColor = useThemeColor({}, 'primary');
@@ -31,13 +34,17 @@ export default function HomeScreen() {
   const { communications, isLoading: communicationsLoading, loadCommunications } = useCommunications();
 
   // Rediriger vers login si l'utilisateur est déconnecté (sécurité côté client)
-  useEffect(() => {
+  const redirectToLoginIfNeeded = useCallback(() => {
     if (!user) {
       router.replace('/login');
     }
   }, [user]);
 
-  const onRefresh = async () => {
+  useEffect(() => {
+    redirectToLoginIfNeeded();
+  }, [redirectToLoginIfNeeded]);
+
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
       await Promise.all([
@@ -46,40 +53,29 @@ export default function HomeScreen() {
         loadCommunications()
       ]);
     } catch (error) {
-      console.error('Erreur lors du rafraîchissement:', error);
+      console.error(t('home.refreshError'), error);
     } finally {
       setRefreshing(false);
     }
-  };
+  }, [loadSongs, loadWorships, loadCommunications]);
 
   // Filtrer les cultes à venir
-  const now = new Date();
-  const upcomingWorships = worships
-    .filter(w => new Date(`${w.date}T${w.time}`) >= now)
-    .slice(0, 3);
+  const now = useMemo(() => new Date(), []);
+  const upcomingWorships = useMemo(() => 
+    worships
+      .filter(w => new Date(`${w.date}T${w.time}`) >= now)
+      .slice(0, 3)
+  , [worships, now]);
 
   // Derniers chants ajoutés
-  const recentSongs = songs.slice(0, 4);
+  const recentSongs = useMemo(() => songs.slice(0, 4), [songs]);
 
   // Communications récentes
-  const recentCommunications = communications.slice(0, 5);
+  const recentCommunications = useMemo(() => communications.slice(0, 5), [communications]);
 
-  const isLoading = songsLoading || worshipsLoading || communicationsLoading;
-
-  // Recharger les données à chaque focus de l'écran
-  useFocusEffect(
-    useCallback(() => {
-      (async () => {
-        try {
-          await Promise.all([loadSongs(), loadWorships(), loadCommunications()]);
-        } catch (e) {}
-      })();
-      const unsubCreateWorship = EventBus.on('worship_created', async () => { await loadWorships(); });
-      const unsubDeleteWorship = EventBus.on('worship_deleted', async () => { await loadWorships(); });
-      const unsubComm = EventBus.on('communication_created', async () => { await loadCommunications(); });
-      return () => { unsubCreateWorship(); unsubDeleteWorship(); unsubComm(); };
-    }, [loadSongs, loadWorships, loadCommunications])
-  );
+  const isLoading = useMemo(() => 
+    songsLoading || worshipsLoading || communicationsLoading
+  , [songsLoading, worshipsLoading, communicationsLoading]);
 
   if (isLoading && !refreshing) {
     return (
@@ -95,6 +91,7 @@ export default function HomeScreen() {
       <ScrollView 
         style={styles.contentArea} 
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -103,12 +100,11 @@ export default function HomeScreen() {
             {/* Welcome Section */}
             <View style={styles.welcomeSection}>
               <ThemedText style={[styles.welcomeTitle, { color: textColor }]}>
-                Bienvenue, {user?.name || 'Utilisateur'}
+                {t('home.welcome', { name: user?.name || t('home.user') })}
               </ThemedText>
               <ThemedText style={[styles.welcomeSubtitle, { color: secondaryColor }]}>
-                {user?.role === 'admin' && 'Administrateur - Accès complet'}
-                {user?.role === 'editor' && 'Éditeur - Gestion des cultes et chants'}
-                {user?.role === 'viewer' && 'Musicien - Consultation des informations'}
+                {user?.role === 'editor' && t('home.roleEditor')}
+                {user?.role === 'viewer' && t('home.roleViewer')}
               </ThemedText>
             </View>
 
@@ -117,7 +113,7 @@ export default function HomeScreen() {
               <View style={styles.sectionHeader}>
                 <Ionicons name="calendar" size={24} color={primaryColor} />
                 <ThemedText style={[styles.sectionTitle, { color: textColor }]}>
-                  Prochains Cultes
+                  {t('home.upcomingWorships')}
                 </ThemedText>
               </View>
               
@@ -132,9 +128,8 @@ export default function HomeScreen() {
                       time={worship.time}
                       location={worship.location}
                       theme={worship.theme}
-                      description={worship.description}
-                      onEdit={() => {}} // Pas d'action pour les viewers
-                      onDelete={() => {}} // Pas d'action pour les viewers
+                      onEdit={() => {}}
+                      onDelete={() => {}}
                     />
                   ))}
                 </View>
@@ -142,7 +137,7 @@ export default function HomeScreen() {
                 <View style={[styles.emptyCard, { backgroundColor, borderColor }]}>
                   <Ionicons name="calendar-outline" size={32} color={secondaryColor} />
                   <ThemedText style={[styles.emptyText, { color: secondaryColor }]}>
-                    Aucun culte planifié prochainement
+                    {t('home.noUpcoming')}
                   </ThemedText>
                 </View>
               )}
@@ -153,7 +148,7 @@ export default function HomeScreen() {
               <View style={styles.sectionHeader}>
                 <Ionicons name="musical-notes" size={24} color={primaryColor} />
                 <ThemedText style={[styles.sectionTitle, { color: textColor }]}>
-                  Répertoire Musical
+                  {t('home.songRepertoire')}
                 </ThemedText>
               </View>
               
@@ -162,12 +157,12 @@ export default function HomeScreen() {
                   {recentSongs.map((song) => (
                     <SongCard
                       key={song.id}
-                      title={song.title || 'Sans titre'}
-                      artist={song.artist || 'Artiste inconnu'}
+                      title={song.title || t('home.untitled')}
+                      artist={song.artist || t('home.unknownArtist')}
                       keySignature={song.key || 'C'}
                       tempo={song.tempo || 'Medium'}
                       duration={song.duration || '3:00'}
-                      category={song.category || 'Louange'}
+                      category={song.category || t('home.defaultCategory')}
                       notes={song.notes || ''}
                       lyrics={song.lyrics || ''}
                     />
@@ -177,7 +172,7 @@ export default function HomeScreen() {
                 <View style={[styles.emptyCard, { backgroundColor, borderColor }]}>
                   <Ionicons name="musical-note-outline" size={32} color={secondaryColor} />
                   <ThemedText style={[styles.emptyText, { color: secondaryColor }]}>
-                    Aucun chant disponible
+                    {t('home.noSongs')}
                   </ThemedText>
                 </View>
               )}
@@ -188,7 +183,7 @@ export default function HomeScreen() {
               <View style={styles.sectionHeader}>
                 <Ionicons name="chatbubbles" size={24} color={primaryColor} />
                 <ThemedText style={[styles.sectionTitle, { color: textColor }]}>
-                  Communications Récentes
+                  {t('home.recentCommunications')}
                 </ThemedText>
               </View>
               
@@ -219,9 +214,9 @@ export default function HomeScreen() {
                                      primaryColor 
                             }
                           ]}>
-                            {comm.type === 'urgent' ? 'Urgent' : 
-                             comm.type === 'reminder' ? 'Rappel' : 
-                             'Info'}
+                            {comm.type === 'urgent' ? t('home.urgent') : 
+                             comm.type === 'reminder' ? t('home.reminder') : 
+                             t('home.info')}
                           </ThemedText>
                         </View>
                         <ThemedText style={[styles.communicationTime, { color: secondaryColor }]}>
@@ -234,7 +229,7 @@ export default function HomeScreen() {
                         </ThemedText>
                       </View>
                       <ThemedText style={[styles.communicationMessage, { color: textColor }]}>
-                        {comm.message || 'Message vide'}
+                        {comm.message || t('home.emptyMessage')}
                       </ThemedText>
                     </View>
                   ))}
@@ -243,7 +238,7 @@ export default function HomeScreen() {
                 <View style={[styles.emptyCard, { backgroundColor, borderColor }]}>
                   <Ionicons name="chatbubble-outline" size={32} color={secondaryColor} />
                   <ThemedText style={[styles.emptyText, { color: secondaryColor }]}>
-                    Aucune communication récente
+                    {t('home.noCommunications')}
                   </ThemedText>
                 </View>
               )}
@@ -263,16 +258,16 @@ export default function HomeScreen() {
                 </View>
               </View>
               
-              <View style={styles.permissionsInfo}>
+              <View style={[styles.permissionsInfo, { borderTopColor: borderColor }]}>
                 <ThemedText style={[styles.permissionsTitle, { color: textColor }]}>
-                  Vos permissions :
+                  {t('home.yourPermissions')}
                 </ThemedText>
                 <View style={styles.permissionsList}>
                   {user?.permissions.canManageWorship && (
                     <View style={styles.permissionItem}>
                       <Ionicons name="checkmark-circle" size={16} color={successColor} />
                       <ThemedText style={[styles.permissionText, { color: textColor }]}>
-                        Gestion des cultes
+                        {t('home.manageWorship')}
                       </ThemedText>
                     </View>
                   )}
@@ -280,7 +275,7 @@ export default function HomeScreen() {
                     <View style={styles.permissionItem}>
                       <Ionicons name="checkmark-circle" size={16} color={successColor} />
                       <ThemedText style={[styles.permissionText, { color: textColor }]}>
-                        Gestion des chants
+                        {t('home.manageSongs')}
                       </ThemedText>
                     </View>
                   )}
@@ -288,7 +283,7 @@ export default function HomeScreen() {
                     <View style={styles.permissionItem}>
                       <Ionicons name="checkmark-circle" size={16} color={successColor} />
                       <ThemedText style={[styles.permissionText, { color: textColor }]}>
-                        Gestion de l'équipe
+                        {t('home.manageTeam')}
                       </ThemedText>
                     </View>
                   )}
@@ -296,7 +291,7 @@ export default function HomeScreen() {
                     <View style={styles.permissionItem}>
                       <Ionicons name="checkmark-circle" size={16} color={successColor} />
                       <ThemedText style={[styles.permissionText, { color: textColor }]}>
-                        Envoi de communications
+                        {t('home.sendCommunications')}
                       </ThemedText>
                     </View>
                   )}
@@ -304,7 +299,7 @@ export default function HomeScreen() {
                     <View style={styles.permissionItem}>
                       <Ionicons name="eye" size={16} color={primaryColor} />
                       <ThemedText style={[styles.permissionText, { color: textColor }]}>
-                        Consultation uniquement
+                        {t('home.viewOnly')}
                       </ThemedText>
                     </View>
                   )}
@@ -328,6 +323,7 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 32,
   },
+
   welcomeSection: {
     marginBottom: 32,
   },
@@ -366,6 +362,11 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 4,
   },
   communicationHeader: {
     flexDirection: 'row',
@@ -407,6 +408,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     marginTop: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 4,
   },
   userInfoHeader: {
     flexDirection: 'row',
@@ -427,7 +433,7 @@ const styles = StyleSheet.create({
   },
   permissionsInfo: {
     borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
+    borderTopColor: 'transparent',
     paddingTop: 16,
   },
   permissionsTitle: {

@@ -3,6 +3,8 @@ import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ThemedText } from './ThemedText';
+import { WorshipStatus } from '@/database/simpleDatabase';
+import { useAuth } from '@/context/AuthContext';
 
 interface WorshipCardProps {
   id: number;
@@ -14,9 +16,13 @@ interface WorshipCardProps {
   preacher?: string;
   songs?: string[];
   musicians?: string[];
+  status?: WorshipStatus;
   onEdit?: () => void;
   onDelete?: () => void;
   onView?: () => void;
+  onAssignMusicians?: () => void;
+  onValidate?: () => void;
+  onReject?: () => void;
 }
 
 export function WorshipCard({
@@ -29,9 +35,13 @@ export function WorshipCard({
   preacher,
   songs,
   musicians,
+  status,
   onEdit,
   onDelete,
-  onView
+  onView,
+  onAssignMusicians,
+  onValidate,
+  onReject
 }: WorshipCardProps) {
   const backgroundColor = useThemeColor({}, 'cardBackground');
   const textColor = useThemeColor({}, 'text');
@@ -40,6 +50,7 @@ export function WorshipCard({
   const borderColor = useThemeColor({}, 'mediumGray');
   const successColor = useThemeColor({}, 'success');
   const errorColor = useThemeColor({}, 'error');
+  const { hasPermission } = useAuth();
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -51,20 +62,20 @@ export function WorshipCard({
     });
   };
 
-  const getStatusColor = () => {
+  const getDateStatusColor = () => {
     const worshipDate = new Date(date);
     const now = new Date();
     
     if (worshipDate < now) {
-      return '#6b7280'; // Passé - gris
+      return secondaryColor;
     } else if (worshipDate.toDateString() === now.toDateString()) {
-      return successColor; // Aujourd'hui - vert
+      return successColor;
     } else {
-      return primaryColor; // Futur - bleu
+      return primaryColor;
     }
   };
 
-  const getStatusText = () => {
+  const getDateStatusText = () => {
     const worshipDate = new Date(date);
     const now = new Date();
     
@@ -75,6 +86,18 @@ export function WorshipCard({
     } else {
       return 'À venir';
     }
+  };
+
+  const getWorkflowStatusColor = () => {
+    if (status === 'published') return successColor;
+    if (status === 'cancelled') return errorColor;
+    return '#f59e0b';
+  };
+
+  const getWorkflowStatusText = () => {
+    if (status === 'published') return 'Publié';
+    if (status === 'cancelled') return 'Annulé';
+    return 'Brouillon';
   };
 
   return (
@@ -88,11 +111,18 @@ export function WorshipCard({
           <ThemedText style={[styles.title, { color: textColor }]}>
             {title}
           </ThemedText>
-          <View style={[styles.statusBadge, { backgroundColor: getStatusColor() }]}>
+          <View style={[styles.statusBadge, { backgroundColor: getDateStatusColor() }]}>
             <ThemedText style={styles.statusText}>
-              {getStatusText()}
+              {getDateStatusText()}
             </ThemedText>
           </View>
+          {status && (
+            <View style={[styles.statusBadge, { backgroundColor: getWorkflowStatusColor() }]}>
+              <ThemedText style={styles.statusText}>
+                {getWorkflowStatusText()}
+              </ThemedText>
+            </View>
+          )}
         </View>
         
         {(onEdit || onDelete) && (
@@ -102,7 +132,7 @@ export function WorshipCard({
                 onPress={onEdit}
                 style={[styles.actionButton, { backgroundColor: primaryColor }]}
               >
-                <Ionicons name="pencil" size={14} color="white" />
+                <Ionicons name="pencil" size={20} color="white" />
               </TouchableOpacity>
             )}
             {onDelete && (
@@ -110,12 +140,44 @@ export function WorshipCard({
                 onPress={onDelete}
                 style={[styles.actionButton, { backgroundColor: errorColor }]}
               >
-                <Ionicons name="trash" size={14} color="white" />
+                <Ionicons name="trash" size={20} color="white" />
               </TouchableOpacity>
             )}
           </View>
         )}
       </View>
+
+      {status === 'draft' && hasPermission('canValidateWorship') && (
+        <View style={[styles.workflowActions, { borderTopColor: borderColor }]}>
+          {onAssignMusicians && (
+            <TouchableOpacity
+              onPress={onAssignMusicians}
+              style={[styles.workflowButton, { backgroundColor: primaryColor }]}
+            >
+              <Ionicons name="people" size={14} color="white" />
+              <ThemedText style={styles.workflowButtonText}>Assigner musiciens</ThemedText>
+            </TouchableOpacity>
+          )}
+          {onValidate && (
+            <TouchableOpacity
+              onPress={onValidate}
+              style={[styles.workflowButton, { backgroundColor: successColor }]}
+            >
+              <Ionicons name="checkmark" size={14} color="white" />
+              <ThemedText style={styles.workflowButtonText}>Valider</ThemedText>
+            </TouchableOpacity>
+          )}
+          {onReject && (
+            <TouchableOpacity
+              onPress={onReject}
+              style={[styles.workflowButton, { backgroundColor: errorColor }]}
+            >
+              <Ionicons name="close" size={14} color="white" />
+              <ThemedText style={styles.workflowButtonText}>Refuser</ThemedText>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
 
       <View style={styles.details}>
         <View style={styles.dateTimeRow}>
@@ -223,9 +285,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   actionButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -257,5 +319,26 @@ const styles = StyleSheet.create({
   infoText: {
     fontSize: 13,
     flex: 1,
+  },
+  workflowActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'transparent',
+  },
+  workflowButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  workflowButtonText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

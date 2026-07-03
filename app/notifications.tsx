@@ -6,17 +6,21 @@ import { useAuth } from '@/context/AuthContext';
 import { useComments } from '@/context/CommentContext';
 import { useNotifications } from '@/context/NotificationContext';
 import { useThemeColor } from '@/hooks/useThemeColor';
+import { useT } from '@/context/I18nContext';
 import { EventBus } from '@/utils/EventBus';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import { Alert, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function NotificationsScreen() {
+  const t = useT();
   const [currentPage, setCurrentPage] = useState('notifications');
   const [refreshing, setRefreshing] = useState(false);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [editingNotification, setEditingNotification] = useState<NotificationData | null>(null);
   
+  const insets = useSafeAreaInsets();
   const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
   const primaryColor = useThemeColor({}, 'primary');
@@ -30,13 +34,11 @@ export default function NotificationsScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    // Simuler un délai de rafraîchissement
     setTimeout(() => {
       setRefreshing(false);
     }, 1000);
   };
 
-  // Trier les notifications par date (plus récentes en premier)
   const sortedNotifications = [...notifications].sort((a, b) => 
     new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime()
   );
@@ -70,15 +72,15 @@ export default function NotificationsScreen() {
     const diffMinutes = Math.floor(diffTime / (1000 * 60));
 
     if (diffMinutes < 1) {
-      return 'À l\'instant';
+      return t('notifications.justNow');
     } else if (diffMinutes < 60) {
-      return `Il y a ${diffMinutes} min`;
+      return t('notifications.minutesAgo', { minutes: String(diffMinutes) });
     } else if (diffHours < 24) {
-      return `Il y a ${diffHours}h`;
+      return t('notifications.hoursAgo', { hours: String(diffHours) });
     } else if (diffDays === 1) {
-      return 'Hier';
+      return t('notifications.yesterday');
     } else if (diffDays < 7) {
-      return `Il y a ${diffDays} jours`;
+      return t('notifications.daysAgo', { days: String(diffDays) });
     } else {
       return date.toLocaleDateString('fr-FR', {
         day: '2-digit',
@@ -88,7 +90,6 @@ export default function NotificationsScreen() {
     }
   };
 
-  // Fonctions pour gérer les notifications (admin seulement)
   const handleAddNotification = () => {
     setEditingNotification(null);
     setShowNotificationModal(true);
@@ -96,19 +97,18 @@ export default function NotificationsScreen() {
 
   const handleSaveNotification = async (notificationData: Omit<NotificationData, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      // Ajouter la notification via le contexte
       await addNotification(notificationData);
       
       if (notificationData.isScheduled) {
-        Alert.alert('Succès', 'La notification a été programmée avec succès');
+        Alert.alert(t('notifications.success'), t('notifications.scheduledSuccess'));
       } else {
-        Alert.alert('Succès', 'La notification a été envoyée avec succès');
+        Alert.alert(t('notifications.success'), t('notifications.sendSuccess'));
       }
       setShowNotificationModal(false);
       setEditingNotification(null);
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible d\'envoyer la notification');
-      console.error('Erreur lors de l\'envoi de la notification:', error);
+      Alert.alert(t('error.generic'), t('notifications.sendError'));
+      console.error(t('notifications.sendError'), error);
     }
   };
 
@@ -125,6 +125,7 @@ export default function NotificationsScreen() {
       <ScrollView 
         style={styles.contentArea} 
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -136,10 +137,10 @@ export default function NotificationsScreen() {
               <Ionicons name="notifications" size={32} color={primaryColor} />
               <View style={styles.titleText}>
                 <ThemedText style={[styles.pageTitle, { color: textColor }]}>
-                  Notifications
+                  {t('notifications.title')}
                 </ThemedText>
                 <ThemedText style={[styles.pageSubtitle, { color: secondaryColor }]}>
-                  {sortedNotifications.length} message{sortedNotifications.length > 1 ? 's' : ''}
+                  {t('notifications.count', { count: String(sortedNotifications.length) })}
                 </ThemedText>
               </View>
               {hasPermission('canSendCommunications') && (
@@ -153,7 +154,7 @@ export default function NotificationsScreen() {
             </View>
           </View>
 
-          {/* Bouton d'ajout pour admin (version étendue) */}
+          {/* Admin add button */}
           {hasPermission('canSendCommunications') && (
             <View style={styles.adminSection}>
               <TouchableOpacity
@@ -163,10 +164,10 @@ export default function NotificationsScreen() {
                 <Ionicons name="send" size={24} color={primaryColor} />
                 <View style={styles.createButtonText}>
                   <ThemedText style={[styles.createButtonTitle, { color: textColor }]}>
-                    Envoyer une notification
+                    {t('notifications.add')}
                   </ThemedText>
                   <ThemedText style={[styles.createButtonSubtitle, { color: secondaryColor }]}>
-                    Communiquer avec l'équipe ou les membres
+                    {t('notifications.communicate')}
                   </ThemedText>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={secondaryColor} />
@@ -198,11 +199,11 @@ export default function NotificationsScreen() {
                       </View>
                       <View style={styles.typeInfo}>
                         <ThemedText style={[styles.typeText, { color: getMessageTypeColor(notification.type) }]}>
-                          {notification.type === 'urgent' ? 'Message urgent' : 
-                           notification.type === 'reminder' ? 'Rappel' : 
-                           notification.type === 'warning' ? 'Attention' :
-                           notification.type === 'success' ? 'Succès' :
-                           'Information'}
+                          {notification.type === 'urgent' ? t('notifications.urgent') : 
+                           notification.type === 'reminder' ? t('notifications.reminder') : 
+                           notification.type === 'warning' ? t('notifications.warning') :
+                           notification.type === 'success' ? t('notifications.success') :
+                           t('notifications.info')}
                         </ThemedText>
                         <ThemedText style={[styles.timeText, { color: secondaryColor }]}>
                           {formatDate(notification.sent_at)}
@@ -214,7 +215,7 @@ export default function NotificationsScreen() {
                       {notification.type === 'urgent' && (
                         <View style={[styles.urgentBadge, { backgroundColor: useThemeColor({}, 'accent') }]}>
                           <ThemedText style={styles.urgentText}>
-                            URGENT
+                            {t('notifications.urgent').toUpperCase()}
                           </ThemedText>
                         </View>
                       )}
@@ -232,7 +233,7 @@ export default function NotificationsScreen() {
                     {notification.message}
                   </ThemedText>
                   
-                  <View style={styles.notificationFooter}>
+                  <View style={[styles.notificationFooter, { borderTopColor: borderColor }]}>
                     <ThemedText style={[styles.fullTimeText, { color: secondaryColor }]}>
                       {new Date(notification.sent_at).toLocaleString('fr-FR', {
                         weekday: 'long',
@@ -245,7 +246,7 @@ export default function NotificationsScreen() {
                     </ThemedText>
                   </View>
 
-                  {/* Section des commentaires */}
+                  {/* Comments section */}
                   <CommentSection
                     notificationId={notification.id}
                     comments={getCommentsByNotificationId(notification.id)}
@@ -259,11 +260,10 @@ export default function NotificationsScreen() {
             <View style={[styles.emptyState, { backgroundColor, borderColor }]}>
               <Ionicons name="notifications-off-outline" size={64} color={secondaryColor} />
               <ThemedText style={[styles.emptyTitle, { color: textColor }]}>
-                Aucune notification
+                {t('notifications.empty')}
               </ThemedText>
               <ThemedText style={[styles.emptyText, { color: secondaryColor }]}>
-                Vous n'avez reçu aucune communication pour le moment.
-                Les messages de l'équipe apparaîtront ici.
+                {t('notifications.emptyDescription')}
               </ThemedText>
             </View>
           )}
@@ -273,19 +273,17 @@ export default function NotificationsScreen() {
             <Ionicons name="information-circle" size={24} color={primaryColor} />
             <View style={styles.infoContent}>
               <ThemedText style={[styles.infoTitle, { color: textColor }]}>
-                À propos des notifications
+                {t('notifications.about')}
               </ThemedText>
               <ThemedText style={[styles.infoText, { color: secondaryColor }]}>
-                • Les messages urgents sont prioritaires{'\n'}
-                • Les rappels concernent les événements à venir{'\n'}
-                • Tirez vers le bas pour actualiser
+                {t('notifications.infoBullets')}
               </ThemedText>
             </View>
           </View>
         </View>
       </ScrollView>
 
-      {/* Modal pour ajouter/modifier une notification */}
+      {/* Modal for adding/editing a notification */}
       <NotificationFormModal
         visible={showNotificationModal}
         notification={editingNotification}
@@ -335,13 +333,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
-    elevation: 2,
+    elevation: 4,
   },
   notificationHeader: {
     flexDirection: 'row',
@@ -390,7 +385,7 @@ const styles = StyleSheet.create({
   },
   notificationFooter: {
     borderTopWidth: 1,
-    borderTopColor: '#f1f5f9',
+    borderTopColor: 'transparent',
     paddingTop: 8,
   },
   fullTimeText: {
@@ -424,7 +419,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     gap: 12,
-    backgroundColor: 'rgba(59, 130, 246, 0.05)',
+    backgroundColor: 'transparent',
   },
   infoContent: {
     flex: 1,
@@ -439,9 +434,9 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   addButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },

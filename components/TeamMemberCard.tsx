@@ -3,6 +3,7 @@ import { View, StyleSheet, Image, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from './ThemedText';
 import { useThemeColor } from '@/hooks/useThemeColor';
+import { useI18n } from '@/context/I18nContext';
 
 interface TeamMemberCardProps {
   id: number;
@@ -30,6 +31,7 @@ export function TeamMemberCard({
   onMessage
 }: TeamMemberCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const { t } = useI18n();
   
   const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
@@ -44,9 +46,9 @@ export function TeamMemberCard({
       'Supprimer le membre',
       `Êtes-vous sûr de vouloir supprimer ${name} de l'équipe ?`,
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         { 
-          text: 'Supprimer', 
+          text: t('delete'), 
           style: 'destructive',
           onPress: onDelete
         }
@@ -60,7 +62,7 @@ export function TeamMemberCard({
         'Appeler',
         `Appeler ${name} au ${phone} ?`,
         [
-          { text: 'Annuler', style: 'cancel' },
+          { text: t('cancel'), style: 'cancel' },
           { 
             text: 'Appeler', 
             onPress: () => {
@@ -79,7 +81,7 @@ export function TeamMemberCard({
         'Envoyer un SMS',
         `Envoyer un message à ${name} ?`,
         [
-          { text: 'Annuler', style: 'cancel' },
+          { text: t('cancel'), style: 'cancel' },
           { 
             text: 'Envoyer', 
             onPress: () => {

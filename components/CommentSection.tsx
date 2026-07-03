@@ -1,7 +1,9 @@
 import { ThemedText } from '@/components/ThemedText';
 import { useAuth } from '@/context/AuthContext';
 import { useThemeColor } from '@/hooks/useThemeColor';
+import { useT } from '@/context/I18nContext';
 import { Ionicons } from '@expo/vector-icons';
+import { Comment } from '@/context/CommentContext';
 import React, { useState } from 'react';
 import {
   Alert,
@@ -11,17 +13,6 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-
-export interface Comment {
-  id: number;
-  notificationId: number;
-  userId: string;
-  userName: string;
-  userRole?: string;
-  content: string;
-  created_at: string;
-  updated_at: string;
-}
 
 interface CommentSectionProps {
   notificationId: number;
@@ -39,7 +30,7 @@ export function CommentSection({
   const [newComment, setNewComment] = useState('');
   const [isExpanded, setIsExpanded] = useState(false);
   
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
   const primaryColor = useThemeColor({}, 'primary');
@@ -47,31 +38,16 @@ export function CommentSection({
   const borderColor = useThemeColor({}, 'mediumGray');
   const cardColor = useThemeColor({}, 'cardBackground');
 
+  const t = useT();
+
   const handleSubmitComment = () => {
     if (!newComment.trim()) {
-      Alert.alert('Erreur', 'Veuillez saisir un commentaire');
+      Alert.alert(t('error'), t('commentSection.commentRequired'));
       return;
     }
 
     onAddComment(newComment.trim());
     setNewComment('');
-  };
-
-  const handleDeleteComment = (commentId: number) => {
-    if (!onDeleteComment) return;
-    
-    Alert.alert(
-      'Supprimer le commentaire',
-      'Êtes-vous sûr de vouloir supprimer ce commentaire ?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Supprimer',
-          style: 'destructive',
-          onPress: () => onDeleteComment(commentId)
-        }
-      ]
-    );
   };
 
   const formatDate = (dateString: string) => {
@@ -83,15 +59,15 @@ export function CommentSection({
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
     if (diffMinutes < 1) {
-      return 'À l\'instant';
+      return t('notifications.justNow');
     } else if (diffMinutes < 60) {
-      return `Il y a ${diffMinutes} min`;
+      return t('notifications.minutesAgo', { minutes: String(diffMinutes) });
     } else if (diffHours < 24) {
-      return `Il y a ${diffHours}h`;
+      return t('notifications.hoursAgo', { hours: String(diffHours) });
     } else if (diffDays === 1) {
-      return 'Hier';
+      return t('notifications.yesterday');
     } else if (diffDays < 7) {
-      return `Il y a ${diffDays} jours`;
+      return t('notifications.daysAgo', { days: String(diffDays) });
     } else {
       return date.toLocaleDateString('fr-FR', {
         day: '2-digit',
@@ -105,9 +81,29 @@ export function CommentSection({
     new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
 
+  const handleDeleteComment = (commentId: number) => {
+    if (!onDeleteComment) return;
+    
+    Alert.alert(
+      t('commentSection.deleteTitle'),
+      t('commentSection.deleteConfirm'),
+      [
+        { text: t('cancel'), style: 'cancel' },
+        {
+          text: t('delete'),
+          style: 'destructive',
+          onPress: () => onDeleteComment(commentId)
+        }
+      ]
+    );
+  };
+
+  const canUserDeleteComment = (comment: Comment) => {
+    return hasPermission('canDeleteComments') || user?.id === comment.userId;
+  };
+
   return (
     <View style={[styles.container, { borderTopColor: borderColor }]}>
-      {/* Header avec compteur de commentaires */}
       <TouchableOpacity 
         style={styles.header}
         onPress={() => setIsExpanded(!isExpanded)}
@@ -115,7 +111,7 @@ export function CommentSection({
         <View style={styles.headerLeft}>
           <Ionicons name="chatbubble-outline" size={16} color={primaryColor} />
           <ThemedText style={[styles.commentCount, { color: textColor }]}>
-            {comments.length} commentaire{comments.length > 1 ? 's' : ''}
+            {t('commentSection.count', { count: String(comments.length) })}
           </ThemedText>
         </View>
         <Ionicons 
@@ -125,15 +121,13 @@ export function CommentSection({
         />
       </TouchableOpacity>
 
-      {/* Section des commentaires (collapsible) */}
       {isExpanded && (
         <View style={styles.commentsSection}>
-          {/* Formulaire d'ajout de commentaire */}
           <View style={[styles.addCommentForm, { backgroundColor: cardColor, borderColor }]}>
             <View style={styles.inputContainer}>
               <TextInput
                 style={[styles.commentInput, { color: textColor, borderColor }]}
-                placeholder="Ajouter un commentaire..."
+                placeholder={t('commentSection.placeholder')}
                 placeholderTextColor={secondaryColor}
                 value={newComment}
                 onChangeText={setNewComment}
@@ -159,7 +153,6 @@ export function CommentSection({
             </ThemedText>
           </View>
 
-          {/* Liste des commentaires */}
           {sortedComments.length > 0 ? (
             <ScrollView style={styles.commentsList} nestedScrollEnabled>
               {sortedComments.map((comment) => (
@@ -186,7 +179,7 @@ export function CommentSection({
                       <ThemedText style={[styles.commentDate, { color: secondaryColor }]}>
                         {formatDate(comment.created_at)}
                       </ThemedText>
-                      {(user?.id === comment.userId || user?.role === 'admin') && onDeleteComment && (
+                      {canUserDeleteComment(comment) && onDeleteComment && (
                         <TouchableOpacity
                           onPress={() => handleDeleteComment(comment.id)}
                           style={styles.deleteButton}
@@ -206,10 +199,10 @@ export function CommentSection({
             <View style={styles.noComments}>
               <Ionicons name="chatbubble-outline" size={32} color={secondaryColor} />
               <ThemedText style={[styles.noCommentsText, { color: secondaryColor }]}>
-                Aucun commentaire pour le moment
+                {t('commentSection.noComments')}
               </ThemedText>
               <ThemedText style={[styles.noCommentsSubtext, { color: secondaryColor }]}>
-                Soyez le premier à commenter !
+                {t('commentSection.noCommentsSubtext')}
               </ThemedText>
             </View>
           )}

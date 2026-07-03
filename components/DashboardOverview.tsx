@@ -111,7 +111,7 @@ export function DashboardOverview() {
       case 'worship': return primaryColor;
       case 'notification': return warningColor;
       case 'song': return successColor;
-      case 'member': return '#8b5cf6';
+      case 'member': return primaryColor;
       default: return secondaryColor;
     }
   };
@@ -176,7 +176,7 @@ export function DashboardOverview() {
       id: 'manage-team',
       title: 'Gérer Équipe',
       icon: 'people',
-      color: '#8b5cf6',
+      color: primaryColor,
       action: () => router.push('/(tabs)/admin'),
       permission: 'canManageTeam'
     }
@@ -201,7 +201,7 @@ export function DashboardOverview() {
         </View>
 
         <View style={[styles.statCard, { backgroundColor: cardColor, borderColor }]}>
-          <Ionicons name="people" size={24} color="#8b5cf6" />
+          <Ionicons name="people" size={24} color={primaryColor} />
           <ThemedText style={[styles.statNumber, { color: textColor }]}>
             {stats.totalMembers}
           </ThemedText>

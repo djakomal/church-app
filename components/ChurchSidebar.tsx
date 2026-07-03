@@ -1,5 +1,6 @@
 import { useAuth } from '@/context/AuthContext';
 import { useThemeColor } from '@/hooks/useThemeColor';
+import { useI18n } from '@/context/I18nContext';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React from 'react';
@@ -21,18 +22,19 @@ export function ChurchSidebar({ currentPage, onPageChange }: ChurchSidebarProps)
   const disabledColor = useThemeColor({}, 'secondary');
 
   const { user, hasPermission, logout } = useAuth();
+  const { t } = useI18n();
 
   const allMenuItems = [
     { 
       id: 'accueil', 
-      label: 'Accueil', 
+      label: t('home.title'), 
       icon: 'home',
-      permission: null, // Toujours accessible
+      permission: null,
       route: '/home'
     },
     { 
       id: 'gestion-culte', 
-      label: 'Gestion Culte', 
+      label: t('worships.title'), 
       icon: 'calendar',
       permission: 'canManageWorship',
       route: '/worship-management'
@@ -41,7 +43,7 @@ export function ChurchSidebar({ currentPage, onPageChange }: ChurchSidebarProps)
       id: 'mes-chants', 
       label: 'Mes Chants', 
       icon: 'musical-notes',
-      permission: null, // Accessible à tous, mais avec interface différente
+      permission: null,
       route: '/songs'
     },
   ];

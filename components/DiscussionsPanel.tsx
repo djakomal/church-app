@@ -18,17 +18,17 @@ export function DiscussionsPanel({ selectedDiscussion, onDiscussionSelect }: Dis
   const discussions = {
     'Messages Directs': [
       { id: 'discussion-generale', title: 'Discussion Générale', icon: 'document-text', time: '', hasNewMessages: true, hasUrgentAlert: true },
-      { id: 'equipe-louange', title: 'Équipe Louange', icon: 'document-text', time: '2h' },
-      { id: 'leader-louange', title: 'Leader Louange', icon: 'document-text', time: 'Hier' },
+      { id: 'equipe-louange', title: 'Équipe Louange', icon: 'document-text', time: '2h', hasNewMessages: false, hasUrgentAlert: false },
+      { id: 'leader-louange', title: 'Leader Louange', icon: 'document-text', time: 'Hier', hasNewMessages: false, hasUrgentAlert: false },
     ],
     'Alertes Urgentes': [
       { id: 'alertes-eglise', title: 'Alertes Église', icon: 'warning', time: '10 min', hasNewMessages: true, hasUrgentAlert: true },
     ],
     'Rappels de Service': [
-      { id: 'rappel-prochain-culte', title: 'Rappel Prochain Culte', icon: 'notifications', time: 'Aujourd\'hui' },
+      { id: 'rappel-prochain-culte', title: 'Rappel Prochain Culte', icon: 'notifications', time: 'Aujourd\'hui', hasNewMessages: false, hasUrgentAlert: false },
     ],
     'Confirmations d\'Présence': [
-      { id: 'confirmations-equipe', title: 'Confirmations Équipe', icon: 'checkmark-circle', time: 'Hier' },
+      { id: 'confirmations-equipe', title: 'Confirmations Équipe', icon: 'checkmark-circle', time: 'Hier', hasNewMessages: false, hasUrgentAlert: false },
     ],
   };
 

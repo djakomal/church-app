@@ -24,6 +24,7 @@ export const Colors = {
     success: '#16a34a', // Green for confirmed status
     warning: '#ca8a04', // Yellow for pending status
     error: '#dc2626', // Red for absent status
+    cardBackground: '#f8fafc', // Light card background
   },
   dark: {
     text: '#ECEDEE',
@@ -42,5 +43,6 @@ export const Colors = {
     success: '#22c55e',
     warning: '#eab308',
     error: '#ef4444',
+    cardBackground: '#1e293b',
   },
 };

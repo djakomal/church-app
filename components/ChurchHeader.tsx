@@ -1,5 +1,6 @@
 import { useAuth } from '@/context/AuthContext';
 import { useThemeColor } from '@/hooks/useThemeColor';
+import { useI18n } from '@/context/I18nContext';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React from 'react';
@@ -21,8 +22,10 @@ export function ChurchHeader({ currentPage, onPageChange }: ChurchHeaderProps) {
   const textColor = useThemeColor({}, 'text');
   const accentColor = useThemeColor({}, 'accent');
   const secondaryColor = useThemeColor({}, 'secondary');
+  const mediumGray = useThemeColor({}, 'mediumGray');
 
   const { user, hasPermission, logout } = useAuth();
+  const { t } = useI18n();
 
   console.log('🔍 ChurchHeader - User:', user ? user.name : 'null');
   console.log('🔍 ChurchHeader - AccentColor:', accentColor);
@@ -30,7 +33,7 @@ export function ChurchHeader({ currentPage, onPageChange }: ChurchHeaderProps) {
   const allPages = [
     { 
       id: 'accueil', 
-      label: 'Accueil', 
+      label: t('home.title'), 
       icon: 'home',
       permission: null,
       route: '/home'
@@ -44,14 +47,14 @@ export function ChurchHeader({ currentPage, onPageChange }: ChurchHeaderProps) {
     },
     { 
       id: 'mes-chants', 
-      label: 'Chants', 
+      label: t('songs.title'), 
       icon: 'musical-notes',
       permission: null,
       route: '/songs'
     },
     { 
       id: 'notifications', 
-      label: 'Notifications', 
+      label: t('notifications.title'), 
       icon: 'notifications',
       permission: null,
       route: '/notifications'
@@ -85,7 +88,7 @@ export function ChurchHeader({ currentPage, onPageChange }: ChurchHeaderProps) {
       'Déconnexion',
       'Êtes-vous sûr de vouloir vous déconnecter ?',
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         { 
           text: 'Déconnecter', 
           style: 'destructive',
@@ -109,7 +112,7 @@ export function ChurchHeader({ currentPage, onPageChange }: ChurchHeaderProps) {
 
   return (
     <SafeAreaView style={{ backgroundColor }}>
-    <View style={[styles.header, { backgroundColor, paddingTop: Math.max(12, insets.top), paddingHorizontal: isSmallScreen ? 12 : 16, paddingVertical: isSmallScreen ? 8 : 12 }]}> 
+    <View style={[styles.header, { backgroundColor, borderBottomColor: mediumGray, paddingTop: Math.max(12, insets.top), paddingHorizontal: isSmallScreen ? 12 : 16, paddingVertical: isSmallScreen ? 8 : 12 }]}> 
       {/* Logo et titre */}
       <View style={styles.logoContainer}>
         <View style={[styles.logo, { backgroundColor: primaryColor, width: isSmallScreen ? 32 : 40, height: isSmallScreen ? 32 : 40, borderRadius: isSmallScreen ? 6 : 8 }]}>
@@ -206,8 +209,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
-    backgroundColor: 'white',
   },
   logoContainer: {
     flexDirection: 'row',
@@ -280,7 +281,9 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 2,
-    boxShadow: '0px 1px 2.22px rgba(0, 0, 0, 0.22)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.22,
+    shadowRadius: 2.22,
   },
 });

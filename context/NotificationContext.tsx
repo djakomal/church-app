@@ -6,7 +6,7 @@ export interface NotificationItem {
   title: string;
   message: string;
   type: 'info' | 'urgent' | 'reminder' | 'success' | 'warning';
-  targetAudience: 'all' | 'musicians' | 'leaders' | 'active_members';
+  targetAudience: 'all' | 'musicians' | 'leaders' | 'active_members' | 'chantres' | 'instrumentistes';
   isScheduled: boolean;
   scheduledDate?: string;
   sent_at: string;
@@ -56,7 +56,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
   return (
     <NotificationContext.Provider value={{
-      notifications,
+      notifications: notifications as NotificationItem[],
       unreadCount,
       isLoading,
       error,

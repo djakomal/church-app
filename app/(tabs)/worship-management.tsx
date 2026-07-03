@@ -4,12 +4,14 @@ import { ThemedText } from '@/components/ThemedText';
 import { WorshipCard } from '@/components/WorshipCard';
 import { WorshipFormModal, Worship } from '@/components/WorshipFormModal';
 import { useAuth } from '@/context/AuthContext';
+import { useT } from '@/context/I18nContext';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { useWorships, useMusicians } from '@/hooks/useSimpleDatabase';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
   Alert,
+  SafeAreaView,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
@@ -17,6 +19,7 @@ import {
 } from 'react-native';
 
 export default function WorshipManagementTabScreen() {
+  const t = useT();
   const { user, hasPermission } = useAuth();
 
   const backgroundColor = useThemeColor({}, 'background');
@@ -27,7 +30,6 @@ export default function WorshipManagementTabScreen() {
   const cardColor = useThemeColor({}, 'cardBackground');
   const errorColor = useThemeColor({}, 'error');
 
-  // Hooks pour les données de base de données
   const {
     worships,
     isLoading: worshipsLoading,
@@ -46,7 +48,6 @@ export default function WorshipManagementTabScreen() {
     deleteMusician
   } = useMusicians();
 
-  // États pour les modals
   const [showWorshipModal, setShowWorshipModal] = useState(false);
   const [editingWorship, setEditingWorship] = useState<Worship | null>(null);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
@@ -54,24 +55,22 @@ export default function WorshipManagementTabScreen() {
   const [showMusicianModal, setShowMusicianModal] = useState(false);
   const [editingMusician, setEditingMusician] = useState<Musician | null>(null);
 
-  // Vérification des permissions
   if (!user || !hasPermission('canManageWorship')) {
     return (
-      <View style={[styles.container, { backgroundColor }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor }]}>
         <View style={styles.accessDenied}>
           <Ionicons name="lock-closed" size={48} color={secondaryColor} />
           <ThemedText style={[styles.accessDeniedText, { color: textColor }]}>
-            Accès non autorisé
+            {t('common.accessDenied')}
           </ThemedText>
           <ThemedText style={[styles.accessDeniedSubtext, { color: secondaryColor }]}>
-            Vous n'avez pas les permissions nécessaires pour gérer les cultes.
+            {t('worships.accessDenied')}
           </ThemedText>
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
-  // Fonctions pour gérer les cultes
   const handleAddWorship = () => {
     setEditingWorship(null);
     setShowWorshipModal(true);
@@ -87,19 +86,19 @@ export default function WorshipManagementTabScreen() {
 
   const handleDeleteWorship = async (id: number) => {
     Alert.alert(
-      'Confirmer la suppression',
-      'Êtes-vous sûr de vouloir supprimer ce culte ?',
+      t('common.confirmDelete'),
+      t('worships.confirmDeleteMessage'),
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Supprimer',
+          text: t('delete'),
           style: 'destructive',
           onPress: async () => {
             try {
               await deleteWorship(id);
-              Alert.alert('Succès', 'Le culte a été supprimé avec succès');
+              Alert.alert(t('common.success'), t('worships.deletedSuccess'));
             } catch (error) {
-              Alert.alert('Erreur', 'Impossible de supprimer le culte');
+              Alert.alert(t('common.error'), t('worships.deleteError'));
             }
           }
         }
@@ -111,15 +110,15 @@ export default function WorshipManagementTabScreen() {
     try {
       if (editingWorship && editingWorship.id) {
         await updateWorship(editingWorship.id, worshipData);
-        Alert.alert('Succès', 'Le culte a été modifié avec succès');
+        Alert.alert(t('common.success'), t('worships.updatedSuccess'));
       } else {
         await createWorship(worshipData);
-        Alert.alert('Succès', 'Le culte a été créé avec succès');
+        Alert.alert(t('common.success'), t('worships.createdSuccess'));
       }
       setShowWorshipModal(false);
       setEditingWorship(null);
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible de sauvegarder le culte');
+      Alert.alert(t('common.error'), t('worships.saveError'));
     }
   };
 
@@ -128,7 +127,6 @@ export default function WorshipManagementTabScreen() {
     setEditingWorship(null);
   };
 
-  // Fonctions pour gérer les musiciens
   const handleAddMusician = () => {
     setEditingMusician(null);
     setShowMusicianModal(true);
@@ -144,19 +142,19 @@ export default function WorshipManagementTabScreen() {
 
   const handleDeleteMusician = async (id: number) => {
     Alert.alert(
-      'Confirmer la suppression',
-      'Êtes-vous sûr de vouloir supprimer ce musicien ?',
+      t('common.confirmDelete'),
+      t('worships.confirmDeleteMusician'),
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Supprimer',
+          text: t('delete'),
           style: 'destructive',
           onPress: async () => {
             try {
               await deleteMusician(id);
-              Alert.alert('Succès', 'Le musicien a été supprimé avec succès');
+              Alert.alert(t('common.success'), t('worships.musicianDeletedSuccess'));
             } catch (error) {
-              Alert.alert('Erreur', 'Impossible de supprimer le musicien');
+              Alert.alert(t('common.error'), t('worships.musicianDeleteError'));
             }
           }
         }
@@ -164,19 +162,43 @@ export default function WorshipManagementTabScreen() {
     );
   };
 
+  const getWorshipStats = () => {
+    const today = new Date();
+    const upcomingThisWeek = worships.filter(w => {
+      const worshipDate = new Date(w.date);
+      const diffTime = worshipDate.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return diffDays >= 0 && diffDays <= 7;
+    });
+    
+    const totalMusicians = musicians.length;
+    const totalSongs = worships.reduce((sum, w) => sum + (w.songs?.length || 0), 0);
+    const averageSongsPerWorship = worships.length > 0 ? totalSongs / worships.length : 0;
+    
+    return {
+      totalWorships: worships.length,
+      upcomingThisWeek: upcomingThisWeek.length,
+      totalMusicians,
+      totalSongs,
+      averageSongsPerWorship: averageSongsPerWorship.toFixed(1)
+    };
+  };
+
+  const stats = getWorshipStats();
+
   const handleSaveMusician = async (musicianData: Omit<Musician, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       if (editingMusician && editingMusician.id) {
         await updateMusician(editingMusician.id, musicianData);
-        Alert.alert('Succès', 'Le musicien a été modifié avec succès');
+        Alert.alert(t('common.success'), t('worships.musicianUpdatedSuccess'));
       } else {
         await createMusician(musicianData);
-        Alert.alert('Succès', 'Le musicien a été ajouté avec succès');
+        Alert.alert(t('common.success'), t('worships.musicianCreatedSuccess'));
       }
       setShowMusicianModal(false);
       setEditingMusician(null);
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible de sauvegarder le musicien');
+      Alert.alert(t('common.error'), t('worships.musicianSaveError'));
     }
   };
 
@@ -186,19 +208,17 @@ export default function WorshipManagementTabScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor }]}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Header */}
         <View style={styles.header}>
           <ThemedText style={[styles.title, { color: textColor }]}>
-            Gestion du Culte
+            {t('worships.title')}
           </ThemedText>
           <ThemedText style={[styles.subtitle, { color: secondaryColor }]}>
-            Planification et organisation des services religieux
+            {t('worships.subtitle')}
           </ThemedText>
         </View>
 
-        {/* Action rapide pour créer un culte */}
         <View style={styles.quickAction}>
           <TouchableOpacity
             style={[styles.createButton, { backgroundColor: primaryColor }]}
@@ -206,16 +226,15 @@ export default function WorshipManagementTabScreen() {
           >
             <Ionicons name="add-circle" size={24} color="white" />
             <ThemedText style={styles.createButtonText}>
-              Créer un nouveau culte
+              {t('worships.add')}
             </ThemedText>
           </TouchableOpacity>
         </View>
 
-        {/* Liste des cultes */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <ThemedText style={[styles.sectionTitle, { color: textColor }]}>
-              Cultes Programmés
+              {t('worships.scheduled')}
             </ThemedText>
             <View style={[styles.countBadge, { backgroundColor: cardColor, borderColor }]}>
               <ThemedText style={[styles.countText, { color: primaryColor }]}>
@@ -247,21 +266,20 @@ export default function WorshipManagementTabScreen() {
             <View style={[styles.emptyState, { backgroundColor: cardColor, borderColor }]}>
               <Ionicons name="calendar-outline" size={48} color={secondaryColor} />
               <ThemedText style={[styles.emptyTitle, { color: textColor }]}>
-                Aucun culte programmé
+                {t('worships.noUpcoming')}
               </ThemedText>
               <ThemedText style={[styles.emptyDescription, { color: secondaryColor }]}>
-                Commencez par créer votre premier culte en appuyant sur le bouton ci-dessus.
+                {t('worships.noUpcomingDescription')}
               </ThemedText>
             </View>
           )}
         </View>
 
-        {/* Gestion des musiciens */}
         {hasPermission('canManageTeam') && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <ThemedText style={[styles.sectionTitle, { color: textColor }]}>
-                Gestion des Musiciens
+                {t('team.title')}
               </ThemedText>
               <TouchableOpacity 
                 style={[styles.addButton, { backgroundColor: '#8b5cf6' }]}
@@ -269,7 +287,7 @@ export default function WorshipManagementTabScreen() {
               >
                 <Ionicons name="person-add" size={16} color="white" />
                 <ThemedText style={styles.addButtonText}>
-                  Ajouter Musicien
+                  {t('team.add')}
                 </ThemedText>
               </TouchableOpacity>
             </View>
@@ -295,8 +313,8 @@ export default function WorshipManagementTabScreen() {
                           </ThemedText>
                           <ThemedText style={[styles.musicianRole, { color: secondaryColor }]}>
                             {musician.type === 'chantre' 
-                              ? `Chantre - ${musician.voiceType}` 
-                              : `Instrumentiste - ${musician.instruments?.join(', ')}`
+                              ? `${t('musician.type.singer')} - ${musician.voiceType}` 
+                              : `${t('musician.type.instrumentalist')} - ${musician.instruments?.join(', ')}`
                             }
                           </ThemedText>
                           <ThemedText style={[styles.musicianContact, { color: secondaryColor }]}>
@@ -321,9 +339,9 @@ export default function WorshipManagementTabScreen() {
                     </View>
                     
                     {musician.availability && musician.availability.length > 0 && (
-                      <View style={styles.availabilitySection}>
+                      <View style={[styles.availabilitySection, { borderTopColor: borderColor }]}>
                         <ThemedText style={[styles.availabilityTitle, { color: textColor }]}>
-                          Disponibilités :
+                          {t('worships.availability')}
                         </ThemedText>
                         <View style={styles.availabilityTags}>
                           {musician.availability.map((availability, index) => (
@@ -338,7 +356,7 @@ export default function WorshipManagementTabScreen() {
                     )}
                     
                     {musician.notes && (
-                      <View style={styles.notesSection}>
+                      <View style={[styles.notesSection, { borderTopColor: borderColor }]}>
                         <ThemedText style={[styles.notesText, { color: secondaryColor }]}>
                           {musician.notes}
                         </ThemedText>
@@ -351,10 +369,10 @@ export default function WorshipManagementTabScreen() {
               <View style={[styles.emptyState, { backgroundColor: cardColor, borderColor }]}>
                 <Ionicons name="people-outline" size={48} color={secondaryColor} />
                 <ThemedText style={[styles.emptyTitle, { color: textColor }]}>
-                  Aucun musicien enregistré
+                  {t('worships.noMusicians')}
                 </ThemedText>
                 <ThemedText style={[styles.emptyDescription, { color: secondaryColor }]}>
-                  Commencez par ajouter des musiciens à votre équipe.
+                  {t('worships.noMusiciansDescription')}
                 </ThemedText>
               </View>
             )}
@@ -363,7 +381,6 @@ export default function WorshipManagementTabScreen() {
 
               </ScrollView>
 
-      {/* Modal pour ajouter/modifier un culte */}
       <WorshipFormModal
         visible={showWorshipModal}
         worship={editingWorship}
@@ -371,14 +388,13 @@ export default function WorshipManagementTabScreen() {
         onSave={handleSaveWorship}
       />
 
-      {/* Modal pour ajouter/modifier un musicien */}
       <MusicianFormModal
         visible={showMusicianModal}
         musician={editingMusician}
         onClose={handleCloseMusicianModal}
         onSave={handleSaveMusician}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -483,7 +499,7 @@ const styles = StyleSheet.create({
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 14,
     paddingHorizontal: 16,
     borderRadius: 8,
     gap: 8,
@@ -501,13 +517,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
-    elevation: 2,
+    elevation: 4,
   },
   musicianHeader: {
     flexDirection: 'row',
@@ -549,9 +562,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   actionButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -559,7 +572,6 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.1)',
   },
   availabilityTitle: {
     fontSize: 14,
@@ -573,7 +585,7 @@ const styles = StyleSheet.create({
   },
   availabilityTag: {
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 8,
     borderRadius: 12,
     borderWidth: 1,
   },
@@ -585,7 +597,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.05)',
   },
   notesText: {
     fontSize: 13,

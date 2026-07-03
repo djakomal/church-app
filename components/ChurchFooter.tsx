@@ -8,6 +8,8 @@ export function ChurchFooter() {
   const backgroundColor = useThemeColor({}, 'lightGray');
   const textColor = useThemeColor({}, 'text');
   const iconColor = useThemeColor({}, 'secondary');
+  const primaryColor = useThemeColor({}, 'primary');
+  const mediumGray = useThemeColor({}, 'mediumGray');
 
   const socialIcons = [
     { name: 'logo-facebook', platform: 'Facebook' },
@@ -19,14 +21,14 @@ export function ChurchFooter() {
   const footerLinks = ['Ressources', 'Légal', 'Contact'];
 
   return (
-    <View style={[styles.footer, { backgroundColor }]}>
+    <View style={[styles.footer, { backgroundColor, borderTopColor: mediumGray }]}>
       <View style={styles.footerContent}>
         {/* Left section */}
         <View style={styles.leftSection}>
           <ThemedText style={[styles.madeWith, { color: textColor }]}>
             Made with
           </ThemedText>
-          <View style={[styles.vLogo, { backgroundColor: '#8b5cf6' }]}>
+          <View style={[styles.vLogo, { backgroundColor: primaryColor }]}>
             <ThemedText style={styles.vLogoText}>V</ThemedText>
           </View>
         </View>
@@ -60,7 +62,6 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     paddingHorizontal: 24,
     borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
   },
   footerContent: {
     flexDirection: 'row',

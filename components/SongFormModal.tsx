@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from './ThemedText';
 import { useThemeColor } from '@/hooks/useThemeColor';
+import { useT } from '@/context/I18nContext';
 
 interface Song {
   id?: number;
@@ -57,6 +58,8 @@ export function SongFormModal({ visible, song, onClose, onSave }: SongFormModalP
   const primaryColor = useThemeColor({}, 'primary');
   const placeholderColor = useThemeColor({}, 'secondary');
 
+  const t = useT();
+
   useEffect(() => {
     if (song) {
       setFormData(song);
@@ -76,11 +79,11 @@ export function SongFormModal({ visible, song, onClose, onSave }: SongFormModalP
 
   const handleSave = () => {
     if (!formData.title.trim()) {
-      Alert.alert('Erreur', 'Le titre du chant est obligatoire');
+      Alert.alert(t('error'), t('songFormModal.titleRequired'));
       return;
     }
     if (!formData.artist.trim()) {
-      Alert.alert('Erreur', 'L\'artiste est obligatoire');
+      Alert.alert(t('error'), t('songFormModal.artistRequired'));
       return;
     }
 
@@ -104,7 +107,7 @@ export function SongFormModal({ visible, song, onClose, onSave }: SongFormModalP
       <View style={[styles.container, { backgroundColor }]}>
         <View style={styles.header}>
           <ThemedText style={[styles.title, { color: textColor }]}>
-            {song ? 'Modifier le Chant' : 'Ajouter un Chant'}
+            {song ? t('songFormModal.editTitle') : t('songFormModal.addTitle')}
           </ThemedText>
           <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
             <Ionicons name="close" size={24} color={textColor} />
@@ -112,40 +115,36 @@ export function SongFormModal({ visible, song, onClose, onSave }: SongFormModalP
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          {/* Titre */}
           <View style={styles.formGroup}>
             <ThemedText style={[styles.label, { color: textColor }]}>
-              Titre du chant *
+              {t('songFormModal.songTitle')}
             </ThemedText>
             <TextInput
               style={[styles.input, { backgroundColor, borderColor, color: textColor }]}
               value={formData.title}
               onChangeText={(text) => setFormData({ ...formData, title: text })}
-              placeholder="Entrez le titre du chant"
+              placeholder={t('songFormModal.songTitlePlaceholder')}
               placeholderTextColor={placeholderColor}
             />
           </View>
 
-          {/* Artiste */}
           <View style={styles.formGroup}>
             <ThemedText style={[styles.label, { color: textColor }]}>
-              Artiste *
+              {t('songFormModal.artist')}
             </ThemedText>
             <TextInput
               style={[styles.input, { backgroundColor, borderColor, color: textColor }]}
               value={formData.artist}
               onChangeText={(text) => setFormData({ ...formData, artist: text })}
-              placeholder="Nom de l'artiste"
+              placeholder={t('songFormModal.artistPlaceholder')}
               placeholderTextColor={placeholderColor}
             />
           </View>
 
-          {/* Ligne avec Tonalité, Tempo et Durée */}
           <View style={styles.row}>
-            {/* Tonalité */}
             <View style={[styles.formGroup, styles.flex1]}>
               <ThemedText style={[styles.label, { color: textColor }]}>
-                Tonalité
+                {t('songFormModal.key')}
               </ThemedText>
               <TouchableOpacity
                 style={[styles.dropdown, { backgroundColor, borderColor }]}
@@ -181,10 +180,9 @@ export function SongFormModal({ visible, song, onClose, onSave }: SongFormModalP
               )}
             </View>
 
-            {/* Tempo */}
             <View style={[styles.formGroup, styles.flex1, styles.marginLeft]}>
               <ThemedText style={[styles.label, { color: textColor }]}>
-                Tempo
+                {t('songFormModal.tempo')}
               </ThemedText>
               <TouchableOpacity
                 style={[styles.dropdown, { backgroundColor, borderColor }]}
@@ -220,10 +218,9 @@ export function SongFormModal({ visible, song, onClose, onSave }: SongFormModalP
               )}
             </View>
 
-            {/* Durée */}
             <View style={[styles.formGroup, styles.flex1, styles.marginLeft]}>
               <ThemedText style={[styles.label, { color: textColor }]}>
-                Durée
+                {t('songFormModal.duration')}
               </ThemedText>
               <TextInput
                 style={[styles.input, { backgroundColor, borderColor, color: textColor }]}
@@ -235,10 +232,9 @@ export function SongFormModal({ visible, song, onClose, onSave }: SongFormModalP
             </View>
           </View>
 
-          {/* Catégorie */}
           <View style={styles.formGroup}>
             <ThemedText style={[styles.label, { color: textColor }]}>
-              Catégorie
+              {t('songFormModal.category')}
             </ThemedText>
             <TouchableOpacity
               style={[styles.dropdown, { backgroundColor, borderColor }]}
@@ -274,16 +270,15 @@ export function SongFormModal({ visible, song, onClose, onSave }: SongFormModalP
             )}
           </View>
 
-          {/* Notes */}
           <View style={styles.formGroup}>
             <ThemedText style={[styles.label, { color: textColor }]}>
-              Notes
+              {t('songFormModal.notes')}
             </ThemedText>
             <TextInput
               style={[styles.textArea, { backgroundColor, borderColor, color: textColor }]}
               value={formData.notes}
               onChangeText={(text) => setFormData({ ...formData, notes: text })}
-              placeholder="Notes sur le chant (optionnel)"
+              placeholder={t('songFormModal.notesPlaceholder')}
               placeholderTextColor={placeholderColor}
               multiline
               numberOfLines={3}
@@ -291,16 +286,15 @@ export function SongFormModal({ visible, song, onClose, onSave }: SongFormModalP
             />
           </View>
 
-          {/* Paroles */}
           <View style={styles.formGroup}>
             <ThemedText style={[styles.label, { color: textColor }]}>
-              Paroles
+              {t('songFormModal.lyrics')}
             </ThemedText>
             <TextInput
               style={[styles.lyricsArea, { backgroundColor, borderColor, color: textColor }]}
               value={formData.lyrics}
               onChangeText={(text) => setFormData({ ...formData, lyrics: text })}
-              placeholder="Paroles du chant (optionnel)"
+              placeholder={t('songFormModal.lyricsPlaceholder')}
               placeholderTextColor={placeholderColor}
               multiline
               numberOfLines={8}
@@ -309,14 +303,13 @@ export function SongFormModal({ visible, song, onClose, onSave }: SongFormModalP
           </View>
         </ScrollView>
 
-        {/* Boutons d'action */}
         <View style={styles.footer}>
           <TouchableOpacity
             style={[styles.cancelButton, { borderColor }]}
             onPress={handleClose}
           >
             <ThemedText style={[styles.cancelButtonText, { color: textColor }]}>
-              Annuler
+              {t('cancel')}
             </ThemedText>
           </TouchableOpacity>
           
@@ -326,7 +319,7 @@ export function SongFormModal({ visible, song, onClose, onSave }: SongFormModalP
           >
             <Ionicons name="checkmark" size={20} color="white" />
             <ThemedText style={styles.saveButtonText}>
-              {song ? 'Modifier' : 'Ajouter'}
+              {song ? t('edit') : t('songs.add')}
             </ThemedText>
           </TouchableOpacity>
         </View>
@@ -422,8 +415,11 @@ const styles = StyleSheet.create({
     right: 0,
     borderRadius: 8,
     borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
     zIndex: 1000,
-    elevation: 5,
     maxHeight: 200,
   },
   dropdownItem: {

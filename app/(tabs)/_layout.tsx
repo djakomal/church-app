@@ -1,15 +1,21 @@
 import { NotificationTabIcon } from '@/components/NotificationTabIcon';
 import { useAuth } from '@/context/AuthContext';
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { useI18n } from '@/context/I18nContext';
+import { useThemeColor } from '@/hooks/useThemeColor';
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import { View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const insets = useSafeAreaInsets();
   const { user, hasPermission } = useAuth();
-  // Pas d'usage de Dimensions ici (erreur web). Garder simple.
+  const { t } = useI18n();
+  const primaryColor = useThemeColor({}, 'primary');
+  const secondaryColor = useThemeColor({}, 'secondary');
+  const backgroundColor = useThemeColor({}, 'background');
+  const borderColor = useThemeColor({}, 'mediumGray');
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -18,31 +24,28 @@ export default function TabLayout() {
           headerShown: true,
           headerTitleAlign: 'center',
           tabBarShowLabel: true,
-          tabBarActiveTintColor: colorScheme === 'dark' ? '#4F8EF7' : '#2563eb',
-          tabBarInactiveTintColor: colorScheme === 'dark' ? '#9ca3af' : '#9ca3af',
+          tabBarActiveTintColor: primaryColor,
+          tabBarInactiveTintColor: secondaryColor,
           tabBarIconStyle: { marginTop: 6 },
-          tabBarLabelStyle: { fontSize: 11, marginBottom: 6, fontWeight: '500' },
+          tabBarLabelStyle: { fontSize: 12, marginBottom: 6, fontWeight: '500' },
           tabBarHideOnKeyboard: true,
           tabBarStyle: {
             position: 'absolute',
             bottom: 0,
             left: 0,
             right: 0,
-            height: 90,
-            backgroundColor: colorScheme === 'dark' ? '#0f1623' : '#ffffff',
+            height: 65,
+            backgroundColor,
             borderTopWidth: 1,
-            borderTopColor: colorScheme === 'dark' ? '#1f2937' : '#e5e7eb',
-            paddingBottom: 30,
+            borderTopColor: borderColor,
+            paddingBottom: insets.bottom,
             paddingTop: 10,
             paddingHorizontal: 15,
-            elevation: 15,
             shadowColor: '#000',
-            shadowOffset: {
-              width: 0,
-              height: -4,
-            },
+            shadowOffset: { width: 0, height: -4 },
             shadowOpacity: 0.2,
             shadowRadius: 8,
+            elevation: 8,
             borderTopLeftRadius: 20,
             borderTopRightRadius: 20,
           },
@@ -51,7 +54,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="home"
           options={{
-            title: 'Accueil',
+            title: t('home.title'),
             tabBarIcon: ({ color, size, focused }) => (
               <Ionicons name={focused ? 'home' : 'home-outline'} size={24} color={color} />
             ),
@@ -63,7 +66,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="songs"
           options={{
-            title: 'Chants',
+            title: t('songs.title'),
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="musical-notes" size={24} color={color} />
             ),
@@ -72,7 +75,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="notifications"
           options={{
-            title: 'Notifications',
+            title: t('notifications.title'),
             tabBarIcon: ({ color, size }) => (
               <NotificationTabIcon color={color} size={24} />
             ),
@@ -81,7 +84,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="profile"
           options={{
-            title: 'Profil',
+            title: t('profile.title'),
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="person-circle" size={24} color={color} />
             ),
@@ -90,7 +93,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="worship-management"
           options={{
-            title: 'Gestion Culte',
+            title: t('worships.title'),
             tabBarIcon: ({ color, size, focused }) => (
               <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={24} color={color} />
             ),

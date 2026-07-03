@@ -11,13 +11,14 @@ import {
   View
 } from 'react-native';
 import { ThemedText } from './ThemedText';
+import { useT } from '@/context/I18nContext';
 
 export interface NotificationData {
   id?: number;
   title: string;
   message: string;
   type: 'info' | 'urgent' | 'reminder' | 'success' | 'warning';
-  targetAudience: 'all' | 'musicians' | 'leaders' | 'active_members';
+  targetAudience: 'all' | 'musicians' | 'leaders' | 'active_members' | 'chantres' | 'instrumentistes';
   scheduledDate?: string;
   isScheduled: boolean;
   created_at?: string;
@@ -49,6 +50,8 @@ export function NotificationFormModal({ visible, notification, onClose, onSave }
   const placeholderColor = useThemeColor({}, 'secondary');
   const cardColor = useThemeColor({}, 'cardBackground');
 
+  const t = useT();
+
   useEffect(() => {
     if (notification) {
       setFormData({
@@ -73,24 +76,24 @@ export function NotificationFormModal({ visible, notification, onClose, onSave }
 
   const handleSave = () => {
     if (!formData.title.trim()) {
-      Alert.alert('Erreur', 'Le titre est obligatoire');
+      Alert.alert(t('error'), t('notificationFormModal.titleRequired'));
       return;
     }
 
     if (!formData.message.trim()) {
-      Alert.alert('Erreur', 'Le message est obligatoire');
+      Alert.alert(t('error'), t('notificationFormModal.messageRequired'));
       return;
     }
 
-    if (formData.isScheduled && !formData.scheduledDate.trim()) {
-      Alert.alert('Erreur', 'La date de programmation est obligatoire');
+    if (formData.isScheduled && !formData.scheduledDate?.trim()) {
+      Alert.alert(t('error'), t('notificationFormModal.scheduleRequired'));
       return;
     }
 
     if (formData.isScheduled && formData.scheduledDate) {
       const dateRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
       if (!dateRegex.test(formData.scheduledDate)) {
-        Alert.alert('Erreur', 'Format de date invalide (YYYY-MM-DDTHH:MM)');
+        Alert.alert(t('error'), t('notificationFormModal.invalidDateFormat'));
         return;
       }
     }
@@ -99,18 +102,20 @@ export function NotificationFormModal({ visible, notification, onClose, onSave }
   };
 
   const notificationTypes = [
-    { value: 'info', label: 'Information', icon: 'information-circle', color: '#3b82f6' },
-    { value: 'success', label: 'Succès', icon: 'checkmark-circle', color: '#10b981' },
-    { value: 'warning', label: 'Attention', icon: 'warning', color: '#f59e0b' },
-    { value: 'reminder', label: 'Rappel', icon: 'time', color: '#8b5cf6' },
-    { value: 'urgent', label: 'Urgent', icon: 'alert-circle', color: '#ef4444' }
+    { value: 'info', label: t('notifications.info'), icon: 'information-circle', color: '#3b82f6' },
+    { value: 'success', label: t('notifications.success'), icon: 'checkmark-circle', color: '#10b981' },
+    { value: 'warning', label: t('notifications.warning'), icon: 'warning', color: '#f59e0b' },
+    { value: 'reminder', label: t('notifications.reminder'), icon: 'time', color: '#8b5cf6' },
+    { value: 'urgent', label: t('notifications.urgent'), icon: 'alert-circle', color: '#ef4444' }
   ];
 
   const targetAudiences = [
-    { value: 'all', label: 'Tous les membres', icon: 'people' },
-    { value: 'musicians', label: 'Musiciens', icon: 'musical-notes' },
-    { value: 'leaders', label: 'Responsables', icon: 'shield-checkmark' },
-    { value: 'active_members', label: 'Membres actifs', icon: 'person' }
+    { value: 'all', label: t('notifications.allMembers'), icon: 'people' },
+    { value: 'musicians', label: t('notifications.musicians'), icon: 'musical-notes' },
+    { value: 'leaders', label: t('notifications.leaders'), icon: 'shield-checkmark' },
+    { value: 'active_members', label: t('notifications.activeMembers'), icon: 'person' },
+    { value: 'chantres', label: t('notificationFormModal.audienceChantres'), icon: 'mic' },
+    { value: 'instrumentistes', label: t('notificationFormModal.audienceInstrumentistes'), icon: 'guitar' }
   ];
 
   return (
@@ -126,41 +131,39 @@ export function NotificationFormModal({ visible, notification, onClose, onSave }
             <Ionicons name="close" size={24} color={textColor} />
           </TouchableOpacity>
           <ThemedText style={[styles.title, { color: textColor }]}>
-            {notification ? 'Modifier la Notification' : 'Nouvelle Notification'}
+            {notification ? t('notificationFormModal.editTitle') : t('notificationFormModal.addTitle')}
           </ThemedText>
           <TouchableOpacity onPress={handleSave} style={[styles.saveButton, { backgroundColor: primaryColor }]}>
             <ThemedText style={styles.saveButtonText}>
-              {formData.isScheduled ? 'Programmer' : 'Envoyer'}
+              {formData.isScheduled ? t('notifications.schedule') : t('notifications.send')}
             </ThemedText>
           </TouchableOpacity>
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.form}>
-            {/* Titre */}
             <View style={styles.inputGroup}>
               <ThemedText style={[styles.label, { color: textColor }]}>
-                Titre *
+                {t('notificationFormModal.title')}
               </ThemedText>
               <TextInput
                 style={[styles.input, { color: textColor, borderColor }]}
                 value={formData.title}
                 onChangeText={(text) => setFormData({ ...formData, title: text })}
-                placeholder="Titre de la notification"
+                placeholder={t('notificationFormModal.titlePlaceholder')}
                 placeholderTextColor={placeholderColor}
               />
             </View>
 
-            {/* Message */}
             <View style={styles.inputGroup}>
               <ThemedText style={[styles.label, { color: textColor }]}>
-                Message *
+                {t('notificationFormModal.message')}
               </ThemedText>
               <TextInput
                 style={[styles.textArea, { color: textColor, borderColor }]}
                 value={formData.message}
                 onChangeText={(text) => setFormData({ ...formData, message: text })}
-                placeholder="Contenu de la notification..."
+                placeholder={t('notificationFormModal.messagePlaceholder')}
                 placeholderTextColor={placeholderColor}
                 multiline
                 numberOfLines={4}
@@ -168,10 +171,9 @@ export function NotificationFormModal({ visible, notification, onClose, onSave }
               />
             </View>
 
-            {/* Type de notification */}
             <View style={styles.inputGroup}>
               <ThemedText style={[styles.label, { color: textColor }]}>
-                Type de notification
+                {t('notificationFormModal.type')}
               </ThemedText>
               <View style={styles.optionsGrid}>
                 {notificationTypes.map((type) => (
@@ -200,10 +202,9 @@ export function NotificationFormModal({ visible, notification, onClose, onSave }
               </View>
             </View>
 
-            {/* Public cible */}
             <View style={styles.inputGroup}>
               <ThemedText style={[styles.label, { color: textColor }]}>
-                Public cible
+                {t('notificationFormModal.targetAudience')}
               </ThemedText>
               <View style={styles.optionsGrid}>
                 {targetAudiences.map((audience) => (
@@ -232,7 +233,6 @@ export function NotificationFormModal({ visible, notification, onClose, onSave }
               </View>
             </View>
 
-            {/* Programmation */}
             <View style={styles.inputGroup}>
               <TouchableOpacity
                 style={styles.checkboxRow}
@@ -244,14 +244,14 @@ export function NotificationFormModal({ visible, notification, onClose, onSave }
                   color={primaryColor} 
                 />
                 <ThemedText style={[styles.checkboxLabel, { color: textColor }]}>
-                  Programmer l'envoi
+                  {t('notificationFormModal.scheduleSend')}
                 </ThemedText>
               </TouchableOpacity>
 
               {formData.isScheduled && (
                 <View style={styles.scheduledSection}>
                   <ThemedText style={[styles.sublabel, { color: secondaryColor }]}>
-                    Date et heure d'envoi
+                    {t('notificationFormModal.scheduleDate')}
                   </ThemedText>
                   <TextInput
                     style={[styles.input, { color: textColor, borderColor }]}
@@ -261,16 +261,15 @@ export function NotificationFormModal({ visible, notification, onClose, onSave }
                     placeholderTextColor={placeholderColor}
                   />
                   <ThemedText style={[styles.hint, { color: secondaryColor }]}>
-                    Format: 2024-12-25T10:30 (25 décembre 2024 à 10h30)
+                    {t('notificationFormModal.scheduleFormat')}
                   </ThemedText>
                 </View>
               )}
             </View>
 
-            {/* Aperçu */}
             <View style={styles.previewSection}>
               <ThemedText style={[styles.label, { color: textColor }]}>
-                Aperçu
+                {t('notificationFormModal.preview')}
               </ThemedText>
               <View style={[styles.previewCard, { backgroundColor: cardColor, borderColor }]}>
                 <View style={styles.previewHeader}>
@@ -280,14 +279,14 @@ export function NotificationFormModal({ visible, notification, onClose, onSave }
                     color={notificationTypes.find(t => t.value === formData.type)?.color} 
                   />
                   <ThemedText style={[styles.previewTitle, { color: textColor }]}>
-                    {formData.title || 'Titre de la notification'}
+                    {formData.title || t('notificationFormModal.titlePlaceholder')}
                   </ThemedText>
                 </View>
                 <ThemedText style={[styles.previewMessage, { color: secondaryColor }]}>
-                  {formData.message || 'Contenu de la notification...'}
+                  {formData.message || t('notificationFormModal.messagePlaceholder')}
                 </ThemedText>
                 <ThemedText style={[styles.previewAudience, { color: secondaryColor }]}>
-                  Pour: {targetAudiences.find(a => a.value === formData.targetAudience)?.label}
+                  {t('notificationFormModal.forLabel', { audience: targetAudiences.find(a => a.value === formData.targetAudience)?.label || '' })}
                 </ThemedText>
               </View>
             </View>

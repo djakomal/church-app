@@ -3,6 +3,7 @@ import { View, StyleSheet, Image, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from './ThemedText';
 import { useThemeColor } from '@/hooks/useThemeColor';
+import { useI18n } from '@/context/I18nContext';
 
 interface ManagedTeamMemberCardProps {
   name: string;
@@ -34,6 +35,7 @@ export function ManagedTeamMemberCard({
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const { t } = useI18n();
   
   const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
@@ -98,7 +100,7 @@ export function ManagedTeamMemberCard({
       'Envoyer un rappel',
       `Voulez-vous envoyer un rappel à ${name} ?`,
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         { 
           text: 'Envoyer', 
           onPress: () => {
@@ -326,8 +328,11 @@ const styles = StyleSheet.create({
     right: 0,
     borderRadius: 8,
     borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
     zIndex: 1000,
-    elevation: 5,
   },
   statusDropdown: {
     position: 'absolute',
@@ -336,8 +341,11 @@ const styles = StyleSheet.create({
     minWidth: 150,
     borderRadius: 8,
     borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
     zIndex: 1000,
-    elevation: 5,
   },
   dropdownItem: {
     flexDirection: 'row',

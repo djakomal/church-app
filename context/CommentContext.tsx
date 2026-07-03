@@ -1,5 +1,4 @@
 import React, { createContext, useContext, ReactNode } from 'react';
-import { Comment } from '@/components/CommentSection';
 import { useAuth } from './AuthContext';
 import { useComments as useCommentsDB } from '@/hooks/useSimpleDatabase';
 
@@ -11,9 +10,21 @@ interface CommentContextType {
   addComment: (notificationId: number, content: string) => Promise<void>;
   deleteComment: (commentId: number) => Promise<void>;
   getCommentCount: (notificationId: number) => number;
+  canDeleteComment: (comment: Comment) => boolean;
 }
 
 const CommentContext = createContext<CommentContextType | undefined>(undefined);
+
+export interface Comment {
+  id: number;
+  notificationId: number;
+  userId: string;
+  userName: string;
+  userRole?: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
 
 export function CommentProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -34,24 +45,36 @@ export function CommentProvider({ children }: { children: ReactNode }) {
       notificationId,
       userId: user.id,
       userName: user.name,
-      userRole: user.role === 'admin' ? 'Administrateur' : 
-                user.role === 'leader' ? 'Responsable' : 
-                'Membre',
-      content
+      userRole: user.role === 'admin' ? 'Administrateur' : 'Membre',
+      content,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     };
 
     await createComment(commentData);
   };
 
+  const adminDeleteComment = async (commentId: number) => {
+    if (!user || user.role !== 'admin') {
+      throw new Error('Seuls les administrateurs peuvent supprimer des commentaires');
+    }
+    await deleteComment(commentId);
+  };
+
+  const canDeleteComment = (comment: Comment) => {
+    return user?.role === 'admin' || user?.id === comment.userId;
+  };
+
   return (
     <CommentContext.Provider value={{
-      comments,
+      comments: comments as Comment[],
       isLoading,
       error,
-      getCommentsByNotificationId,
+      getCommentsByNotificationId: getCommentsByNotificationId as (notificationId: number) => Comment[],
       addComment,
-      deleteComment,
-      getCommentCount
+      deleteComment: adminDeleteComment,
+      getCommentCount,
+      canDeleteComment
     }}>
       {children}
     </CommentContext.Provider>

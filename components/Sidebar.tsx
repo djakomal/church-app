@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { useThemeColor } from '@/hooks/useThemeColor';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 interface SidebarProps {
@@ -10,6 +11,7 @@ interface SidebarProps {
 export const Sidebar = ({ children }: SidebarProps) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const colorScheme = useColorScheme();
+  const mediumGray = useThemeColor({}, 'mediumGray');
   const [width] = useState(new Animated.Value(280)); // largeur initiale
 
   const toggleSidebar = () => {
@@ -28,11 +30,12 @@ export const Sidebar = ({ children }: SidebarProps) => {
         {
           width,
           backgroundColor: colorScheme === 'dark' ? '#1c1c1c' : '#fff',
+          borderRightColor: mediumGray,
         },
       ]}
     >
       <TouchableOpacity
-        style={styles.toggleButton}
+        style={[styles.toggleButton, { borderBottomColor: mediumGray }]}
         onPress={toggleSidebar}
       >
         <FontAwesome
@@ -52,13 +55,11 @@ const styles = StyleSheet.create({
   container: {
     height: '100%',
     borderRightWidth: 1,
-    borderRightColor: '#e0e0e0',
   },
   toggleButton: {
     padding: 15,
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
   },
   content: {
     flex: 1,

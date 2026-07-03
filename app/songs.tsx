@@ -8,15 +8,19 @@ import { ManagedSongCard } from '@/components/ManagedSongCard';
 import { SongCard } from '@/components/SongCard';
 import { SongFormModal } from '@/components/SongFormModal';
 import { useAuth } from '@/context/AuthContext';
+import { useT } from '@/context/I18nContext';
 import { Song } from '@/database/simpleDatabase';
 import { useSongs } from '@/hooks/useSimpleDatabase';
 import { useThemeColor } from '@/hooks/useThemeColor';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Alert } from 'react-native';
 
 export default function SongsScreen() {
+  const t = useT();
+  const insets = useSafeAreaInsets();
   const [currentPage, setCurrentPage] = useState('mes-chants');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('Tous');
+  const [selectedCategory, setSelectedCategory] = useState(t('songs.all'));
   const [showSongModal, setShowSongModal] = useState(false);
   const [editingSong, setEditingSong] = useState<Song | null>(null);
 
@@ -39,19 +43,20 @@ export default function SongsScreen() {
 
   const canManageSongs = hasPermission('canManageSongs');
 
-  const categories = ['Tous', 'Louange', 'Adoration', 'Célébration', 'Invocation'];
+  const allLabel = t('songs.all');
+  const categories = [allLabel, t('songs.praise'), t('songs.adoration'), t('songs.celebration'), t('songs.invocation')];
 
   // Filtrer les chants
   const filteredSongs = songs.filter(song => {
     const matchesSearch = song.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          song.artist.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === 'Tous' || song.category === selectedCategory;
+    const matchesCategory = selectedCategory === allLabel || song.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
   const handleAddSong = () => {
     if (!canManageSongs) {
-      Alert.alert('Accès refusé', 'Vous n\'avez pas les permissions pour ajouter des chants.');
+      Alert.alert(t('error.generic'), t('songs.add'));
       return;
     }
     setEditingSong(null);
@@ -60,7 +65,7 @@ export default function SongsScreen() {
 
   const handleEditSong = (id: number) => {
     if (!canManageSongs) {
-      Alert.alert('Accès refusé', 'Vous n\'avez pas les permissions pour modifier des chants.');
+      Alert.alert(t('error.generic'), t('songs.edit'));
       return;
     }
     const song = songs.find(s => s.id === id);
@@ -72,14 +77,14 @@ export default function SongsScreen() {
 
   const handleDeleteSong = async (id: number) => {
     if (!canManageSongs) {
-      Alert.alert('Accès refusé', 'Vous n\'avez pas les permissions pour supprimer des chants.');
+      Alert.alert(t('error.generic'), t('songs.delete'));
       return;
     }
     try {
       await deleteSong(id);
-      Alert.alert('Succès', 'Le chant a été supprimé avec succès');
+      Alert.alert(t('songs.title'), t('songs.delete'));
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible de supprimer le chant');
+      Alert.alert(t('error.generic'), t('songs.delete'));
     }
   };
 
@@ -87,15 +92,15 @@ export default function SongsScreen() {
     try {
       if (editingSong && editingSong.id) {
         await updateSong(editingSong.id, songData);
-        Alert.alert('Succès', 'Le chant a été modifié avec succès');
+        Alert.alert(t('songs.title'), t('songs.edit'));
       } else {
         await createSong(songData);
-        Alert.alert('Succès', 'Le chant a été ajouté avec succès');
+        Alert.alert(t('songs.title'), t('songs.add'));
       }
       setShowSongModal(false);
       setEditingSong(null);
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible de sauvegarder le chant');
+      Alert.alert(t('error.generic'), t('save'));
     }
   };
 
@@ -109,7 +114,7 @@ export default function SongsScreen() {
       <View style={[styles.container, { backgroundColor }]}>
         <View style={styles.errorContainer}>
           <ThemedText style={[styles.errorText, { color: useThemeColor({}, 'error') }]}>
-            Erreur de chargement des chants
+            {t('error.generic')}
           </ThemedText>
           <ThemedText style={[styles.errorSubtext, { color: secondaryColor }]}>
             {error}
@@ -130,28 +135,25 @@ export default function SongsScreen() {
   return (
     <View style={[styles.container, { backgroundColor }]}> 
       {/* Main content area */}
-      <ScrollView style={styles.contentArea} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.contentArea} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}>
         <View style={styles.content}>
             {/* Page title */}
             <View style={styles.titleSection}>
               <ThemedText style={[styles.pageTitle, { color: textColor }]}>
-                {canManageSongs ? 'Mes Chants' : 'Répertoire Musical'}
+                {t('songs.title')}
               </ThemedText>
               <ThemedText style={[styles.pageSubtitle, { color: secondaryColor }]}>
-                {canManageSongs 
-                  ? 'Gérez votre collection de chants'
-                  : 'Consultez le répertoire musical de l\'église'
-                }
+                {canManageSongs ? t('songs.add') : t('songs.title')}
               </ThemedText>
             </View>
 
             {/* Search and filters */}
             <View style={styles.filtersSection}>
-              <View style={styles.searchContainer}>
+              <View style={[styles.searchContainer, { backgroundColor: useThemeColor({}, 'lightGray') }]}>
                 <Ionicons name="search" size={20} color={placeholderColor} />
                 <TextInput
                   style={[styles.searchInput, { color: textColor }]}
-                  placeholder="Rechercher un chant ou un artiste..."
+                  placeholder={t('songs.search')}
                   placeholderTextColor={placeholderColor}
                   value={searchQuery}
                   onChangeText={setSearchQuery}
@@ -191,7 +193,7 @@ export default function SongsScreen() {
                 >
                   <Ionicons name="add" size={20} color="white" />
                   <ThemedText style={styles.addButtonText}>
-                    Ajouter un Chant
+                    {t('songs.add')}
                   </ThemedText>
                 </TouchableOpacity>
               </View>
@@ -202,8 +204,8 @@ export default function SongsScreen() {
               <View style={styles.sectionHeader}>
                 <ThemedText style={[styles.sectionTitle, { color: textColor }]}>
                   {filteredSongs.length} chant{filteredSongs.length > 1 ? 's' : ''} 
-                  {selectedCategory !== 'Tous' && ` - ${selectedCategory}`}
-                  {searchQuery && ` pour "${searchQuery}"`}
+                  {selectedCategory !== allLabel && ` - ${selectedCategory}`}
+                  {searchQuery && ` ${t('songs.search')} "${searchQuery}"`}
                 </ThemedText>
               </View>
 
@@ -243,27 +245,21 @@ export default function SongsScreen() {
                 <View style={[styles.emptyState, { backgroundColor, borderColor }]}>
                   <Ionicons name="musical-notes-outline" size={48} color={secondaryColor} />
                   <ThemedText style={[styles.emptyTitle, { color: textColor }]}>
-                    {searchQuery || selectedCategory !== 'Tous' 
-                      ? 'Aucun chant trouvé' 
-                      : 'Aucun chant disponible'
-                    }
+                    {t('songs.noResults')}
                   </ThemedText>
                   <ThemedText style={[styles.emptyText, { color: secondaryColor }]}>
-                    {searchQuery || selectedCategory !== 'Tous'
-                      ? 'Essayez de modifier vos critères de recherche'
-                      : canManageSongs 
-                        ? 'Commencez par ajouter votre premier chant'
-                        : 'Les chants seront affichés ici une fois ajoutés'
-                    }
+                    {canManageSongs && !searchQuery && selectedCategory === allLabel
+                      ? t('songs.add')
+                      : t('songs.search')}
                   </ThemedText>
-                  {canManageSongs && !searchQuery && selectedCategory === 'Tous' && (
+                  {canManageSongs && !searchQuery && selectedCategory === allLabel && (
                     <TouchableOpacity 
                       style={[styles.emptyButton, { backgroundColor: primaryColor }]}
                       onPress={handleAddSong}
                     >
                       <Ionicons name="add" size={20} color="white" />
                       <ThemedText style={styles.emptyButtonText}>
-                        Ajouter un chant
+                        {t('songs.add')}
                       </ThemedText>
                     </TouchableOpacity>
                   )}
@@ -272,20 +268,7 @@ export default function SongsScreen() {
             </View>
 
             {/* Permission info for viewers */}
-            {!canManageSongs && (
-              <View style={[styles.infoCard, { backgroundColor, borderColor }]}>
-                <Ionicons name="information-circle" size={24} color={primaryColor} />
-                <View style={styles.infoContent}>
-                  <ThemedText style={[styles.infoTitle, { color: textColor }]}>
-                    Mode consultation
-                  </ThemedText>
-                  <ThemedText style={[styles.infoText, { color: secondaryColor }]}>
-                    Vous consultez le répertoire musical en lecture seule. 
-                    Contactez un administrateur pour obtenir les permissions de modification.
-                  </ThemedText>
-                </View>
-              </View>
-            )}
+
           </View>
         </ScrollView>
 
@@ -317,7 +300,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   pageTitle: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 8,
   },
@@ -332,7 +315,6 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.05)',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -348,7 +330,7 @@ const styles = StyleSheet.create({
   },
   categoryButton: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 12,
     borderRadius: 20,
     borderWidth: 1,
     marginRight: 8,
@@ -364,7 +346,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 24,
     borderRadius: 12,
     gap: 8,
