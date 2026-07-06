@@ -117,12 +117,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const requestOTP = async (email: string): Promise<{ ok: boolean; reason?: string; otp?: string }> => {
-    return { ok: false, reason: 'otp_not_available' };
+  const requestOTP = async (email: string): Promise<{ ok: boolean; reason?: string; devCode?: string }> => {
+    try {
+      const res = await authApi.sendOTP(email);
+      return { ok: true, devCode: res.devCode };
+    } catch (error: any) {
+      return { ok: false, reason: error.message };
+    }
   };
 
   const verifyOTP = async (email: string, otp: string): Promise<{ ok: boolean; reason?: string }> => {
-    return { ok: false, reason: 'otp_not_available' };
+    try {
+      await authApi.verifyOTP(email, otp);
+      return { ok: true };
+    } catch (error: any) {
+      return { ok: false, reason: error.message };
+    }
   };
 
   const register = async (data: RegisterData): Promise<boolean> => {

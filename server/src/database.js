@@ -168,18 +168,7 @@ function seedDefaults() {
     );
   }
 
-  const songCount = db.prepare('SELECT COUNT(*) as c FROM songs').get();
-  if (songCount.c === 0) {
-    const insert = db.prepare(`INSERT INTO songs (title, artist, key, tempo, duration, category, notes, lyrics)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
-    const seedSongs = [
-      ['Combien de fois', 'Exo', 'D', 'Medium', '4:30', 'Louange', '', 'Combien de fois...'],
-      ['Je veux te louer', 'David', 'G', 'Medium', '3:45', 'Louange', '', 'Je veux te louer...'],
-      ['Oh viens Esprit', 'Adoration', 'A', 'Lent', '5:00', 'Adoration', '', 'Oh viens Esprit...'],
-      ['Grand est ton amour', 'Équipe', 'C', 'Medium', '4:00', 'Louange', '', 'Grand est ton amour...'],
-    ];
-    for (const s of seedSongs) insert.run(...s);
-  }
+
 }
 
 module.exports = { getDb };

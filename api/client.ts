@@ -1,4 +1,13 @@
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api';
+function getBaseUrl(): string {
+  if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL;
+  try {
+    const { Platform } = require('react-native');
+    if (Platform.OS === 'android') return 'http://10.0.2.2:3001/api';
+  } catch {}
+  return 'http://localhost:3001/api';
+}
+
+const API_URL = getBaseUrl();
 
 type Method = 'GET' | 'POST' | 'PUT' | 'DELETE';
 

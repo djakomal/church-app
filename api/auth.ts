@@ -1,4 +1,5 @@
-import { api, setToken } from './client';
+import { api, setToken, getToken } from './client';
+export { setToken, getToken };
 
 export interface User {
   id: string;
@@ -21,6 +22,12 @@ interface AuthResponse {
 }
 
 export const authApi = {
+  sendOTP: async (email: string) => {
+    return api.post<{ ok: boolean; devCode?: string }>('/auth/send-otp', { email });
+  },
+  verifyOTP: async (email: string, otp: string) => {
+    return api.post<{ ok: boolean }>('/auth/verify-otp', { email, otp });
+  },
   login: async (email: string, password: string) => {
     const res = await api.post<AuthResponse>('/auth/login', { email, password });
     setToken(res.token);

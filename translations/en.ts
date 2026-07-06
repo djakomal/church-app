@@ -163,6 +163,13 @@ const en: Record<string, string> = {
   'register.instruments': 'Instruments',
   'register.instrumentPlaceholder': 'Add an instrument',
   'register.voiceType': 'Voice type',
+  'register.verifyEmail': 'Email Verification',
+  'register.otpSent': 'A verification code has been sent to',
+  'register.enterOTP': 'Please enter the verification code',
+  'register.verifyButton': 'Verify & Create Account',
+  'register.sendingOtp': 'Sending code...',
+  'register.backToForm': 'Back to form',
+  'register.devCode': 'Dev code',
 
   'home.title': 'Home',
   'home.welcome': 'Welcome, {name}',

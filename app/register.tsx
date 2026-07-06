@@ -5,7 +5,7 @@ import { useThemeColor } from '@/hooks/useThemeColor';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -31,8 +31,10 @@ export default function RegisterScreen() {
   const [instrumentInput, setInstrumentInput] = useState('');
   const [voiceType, setVoiceType] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-
-  const instrumentOptions = ['Guitare', 'Piano', 'Batterie', 'Basse', 'Clavier', 'Violon', 'Saxophone', 'Flûte', 'Trompette', 'Percussions'];
+  const [otpStep, setOtpStep] = useState<'form' | 'otp'>('form');
+  const [otpCode, setOtpCode] = useState('');
+  const [devCode, setDevCode] = useState('');
+  const otpInputRef = useRef<any>(null);
 
   const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
@@ -42,7 +44,7 @@ export default function RegisterScreen() {
   const placeholderColor = useThemeColor({}, 'secondary');
   const insets = useSafeAreaInsets();
 
-  const { register, login } = useAuth();
+  const { register, login, requestOTP, verifyOTP } = useAuth();
 
   const validateForm = () => {
     if (!formData.name.trim()) {
@@ -79,9 +81,40 @@ export default function RegisterScreen() {
 
     setIsLoading(true);
     try {
+      const result = await requestOTP(formData.email.trim().toLowerCase());
+      if (result.ok) {
+        if (result.devCode) setDevCode(result.devCode);
+        setOtpStep('otp');
+        setTimeout(() => otpInputRef.current?.focus(), 300);
+      } else {
+        Alert.alert(t('error'), result.reason || t('error.generic'));
+      }
+    } catch (error) {
+      Alert.alert(t('error'), t('error.generic'));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyOTP = async () => {
+    if (!otpCode.trim()) {
+      Alert.alert(t('error'), t('register.enterOTP'));
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const email = formData.email.trim().toLowerCase();
+      const result = await verifyOTP(email, otpCode.trim());
+      if (!result.ok) {
+        Alert.alert(t('error'), result.reason || t('error.generic'));
+        setIsLoading(false);
+        return;
+      }
+
       const success = await register({
         name: formData.name.trim(),
-        email: formData.email.trim().toLowerCase(),
+        email,
         password: formData.password,
         role: selectedRole,
         musicianType: selectedRole === 'viewer' ? 'instrumentiste' : 'chantre',
@@ -90,16 +123,14 @@ export default function RegisterScreen() {
       });
 
       if (success) {
-        const loggedIn = await login(formData.email.trim().toLowerCase(), formData.password);
+        const loggedIn = await login(email, formData.password);
         if (loggedIn) {
           router.replace('/(tabs)/home');
         } else {
           Alert.alert(
             t('register.success'),
             t('register.successMsg'),
-            [
-              { text: 'OK', onPress: () => router.replace('/login') }
-            ]
+            [{ text: 'OK', onPress: () => router.replace('/login') }]
           );
         }
       } else {
@@ -371,25 +402,82 @@ export default function RegisterScreen() {
               </View>
             )}
 
-            {/* Register Button */}
-            <TouchableOpacity
-              style={[styles.registerButton, { backgroundColor: primaryColor }]}
-              onPress={handleRegister}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <ThemedText style={styles.registerButtonText}>
-                  {t('register.creating')}
+            {/* OTP Verification Step */}
+            {otpStep === 'otp' ? (
+              <View style={styles.otpSection}>
+                <ThemedText style={[styles.otpTitle, { color: textColor }]}>
+                  {t('register.verifyEmail')}
                 </ThemedText>
-              ) : (
-                <>
-                  <Ionicons name="person-add" size={20} color="white" />
-                  <ThemedText style={styles.registerButtonText}>
-                    {t('register.button')}
+                <ThemedText style={[styles.otpSubtitle, { color: secondaryColor }]}>
+                  {t('register.otpSent')} {formData.email}
+                </ThemedText>
+                <View style={[styles.inputContainer, { borderColor }]}>
+                  <Ionicons name="lock-open" size={20} color={placeholderColor} />
+                  <TextInput
+                    ref={otpInputRef}
+                    style={[styles.otpInput, { color: textColor }]}
+                    value={otpCode}
+                    onChangeText={setOtpCode}
+                    placeholder="123456"
+                    placeholderTextColor={placeholderColor}
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    autoCapitalize="none"
+                  />
+                </View>
+                {devCode ? (
+                  <ThemedText style={[styles.devCodeHint, { color: secondaryColor }]}>
+                    {t('register.devCode')}: {devCode}
                   </ThemedText>
-                </>
-              )}
-            </TouchableOpacity>
+                ) : null}
+                <TouchableOpacity
+                  style={[styles.registerButton, { backgroundColor: primaryColor }]}
+                  onPress={handleVerifyOTP}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <ThemedText style={styles.registerButtonText}>
+                      {t('register.creating')}
+                    </ThemedText>
+                  ) : (
+                    <>
+                      <Ionicons name="checkmark-circle" size={20} color="white" />
+                      <ThemedText style={styles.registerButtonText}>
+                        {t('register.verifyButton')}
+                      </ThemedText>
+                    </>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.backToFormButton}
+                  onPress={() => { setOtpStep('form'); setOtpCode(''); }}
+                  disabled={isLoading}
+                >
+                  <ThemedText style={[styles.backToFormText, { color: secondaryColor }]}>
+                    {t('register.backToForm')}
+                  </ThemedText>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={[styles.registerButton, { backgroundColor: primaryColor }]}
+                onPress={handleRegister}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <ThemedText style={styles.registerButtonText}>
+                    {t('register.sendingOtp')}
+                  </ThemedText>
+                ) : (
+                  <>
+                    <Ionicons name="person-add" size={20} color="white" />
+                    <ThemedText style={styles.registerButtonText}>
+                      {t('register.button')}
+                    </ThemedText>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
           </View>
 
 
@@ -584,5 +672,42 @@ const styles = StyleSheet.create({
   loginLinkButton: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  otpSection: {
+    marginTop: 8,
+  },
+  otpTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  otpSubtitle: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  otpInput: {
+    flex: 1,
+    fontSize: 24,
+    letterSpacing: 8,
+    textAlign: 'center',
+    minHeight: 40,
+    fontWeight: '600',
+  },
+  devCodeHint: {
+    textAlign: 'center',
+    fontSize: 12,
+    marginTop: 8,
+    fontStyle: 'italic',
+  },
+  backToFormButton: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    marginTop: 4,
+  },
+  backToFormText: {
+    fontSize: 14,
   },
 });

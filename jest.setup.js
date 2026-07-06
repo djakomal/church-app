@@ -136,30 +136,43 @@ jest.mock('@/api/communications', () => {
   };
 });
 
-jest.mock('@/api/auth', () => ({
-  __esModule: true,
-  authApi: {
-    login: jest.fn(async (email, password) => {
-      if (email === 'admin@church.com' && password === 'Pa$$w0rd!') {
-        return {
-          user: { id: 'admin-001', name: 'Administrateur', email: 'admin@church.com', role: 'admin', permissions: { canManageUsers: true, canManageAllCults: true, canSendGlobalNotifications: true, canCreateCults: true, canManageSongs: true, canViewCults: true, canCommentOnNotifications: true } },
-          token: 'mock-token',
-        };
-      }
-      throw new Error('Email ou mot de passe incorrect');
-    }),
-    register: jest.fn(async (data) => ({
-      user: { id: 'user-123', name: data.name, email: data.email, role: data.role || 'viewer', permissions: { canViewCults: true, canViewNotifications: true, canCommentOnNotifications: true } },
-      token: 'mock-token',
-    })),
-    me: jest.fn(async () => ({ id: 'admin-001', name: 'Administrateur', email: 'admin@church.com', role: 'admin', permissions: {} })),
-    changePassword: jest.fn(async () => ({ ok: true })),
-    updateProfile: jest.fn(async (name, email) => ({ id: 'admin-001', name, email, role: 'admin', permissions: {} })),
-    logout: jest.fn(),
-  },
-  setToken: jest.fn(),
-  getToken: jest.fn(() => 'mock-token'),
-}));
+jest.mock('@/api/auth', () => {
+  const otpStore = {};
+  return {
+    __esModule: true,
+    authApi: {
+      sendOTP: jest.fn(async (email) => {
+        const code = '123456';
+        otpStore[email.toLowerCase()] = { code, expiresAt: Date.now() + 5 * 60 * 1000 };
+        return { ok: true, devCode: code };
+      }),
+      verifyOTP: jest.fn(async (email, otp) => {
+        const record = otpStore[email.toLowerCase()];
+        if (!record || record.code !== otp) throw new Error('Code incorrect');
+        return { ok: true };
+      }),
+      login: jest.fn(async (email, password) => {
+        if (email === 'admin@church.com' && password === 'Pa$$w0rd!') {
+          return {
+            user: { id: 'admin-001', name: 'Administrateur', email: 'admin@church.com', role: 'admin', permissions: { canManageUsers: true, canManageAllCults: true, canSendGlobalNotifications: true, canCreateCults: true, canManageSongs: true, canViewCults: true, canCommentOnNotifications: true } },
+            token: 'mock-token',
+          };
+        }
+        throw new Error('Email ou mot de passe incorrect');
+      }),
+      register: jest.fn(async (data) => ({
+        user: { id: 'user-123', name: data.name, email: data.email, role: data.role || 'viewer', permissions: { canViewCults: true, canViewNotifications: true, canCommentOnNotifications: true } },
+        token: 'mock-token',
+      })),
+      me: jest.fn(async () => ({ id: 'admin-001', name: 'Administrateur', email: 'admin@church.com', role: 'admin', permissions: {} })),
+      changePassword: jest.fn(async () => ({ ok: true })),
+      updateProfile: jest.fn(async (name, email) => ({ id: 'admin-001', name, email, role: 'admin', permissions: {} })),
+      logout: jest.fn(),
+    },
+    setToken: jest.fn(),
+    getToken: jest.fn(() => 'mock-token'),
+  };
+});
 
 jest.mock('@/api/users', () => {
   const users = [

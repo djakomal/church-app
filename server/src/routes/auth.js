@@ -1,10 +1,46 @@
 const { Router } = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const nodemailer = require('nodemailer');
 const { getDb } = require('../database');
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'church-app-secret-key-change-in-production';
+
+// In-memory OTP store
+const otpStore = {};
+
+function generateOTP() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+function createTransporter() {
+  if (process.env.SMTP_HOST) {
+    return nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: parseInt(process.env.SMTP_PORT || '587'),
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    });
+  }
+  return null;
+}
+
+async function sendOTPEmail(email, code) {
+  const transporter = createTransporter();
+  if (transporter) {
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM || '"Church App" <noreply@church.app>',
+      to: email,
+      subject: 'Votre code de vérification',
+      html: `<p>Votre code de vérification est : <strong>${code}</strong></p><p>Ce code expire dans 5 minutes.</p>`,
+    });
+  }
+  console.log(`[OTP] Code for ${email}: ${code}`);
+}
 
 const ADMIN_PERMISSIONS = {
   canManageUsers: true, canAssignRoles: true, canValidateCults: true,
@@ -41,6 +77,47 @@ function getPermissionsForRole(role) {
     default: return VIEWER_PERMISSIONS;
   }
 }
+
+router.post('/send-otp', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email requis' });
+
+  const existing = getDb().prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase());
+  if (existing) return res.status(409).json({ error: 'Email déjà utilisé' });
+
+  const code = generateOTP();
+  otpStore[email.toLowerCase()] = {
+    code,
+    expiresAt: Date.now() + 5 * 60 * 1000,
+    used: false,
+  };
+
+  try {
+    await sendOTPEmail(email, code);
+  } catch (err) {
+    console.error('[OTP] Failed to send email:', err.message);
+  }
+
+  res.json({ ok: true, devCode: process.env.NODE_ENV !== 'production' ? code : undefined });
+});
+
+router.post('/verify-otp', (req, res) => {
+  const { email, otp } = req.body;
+  if (!email || !otp) return res.status(400).json({ error: 'Email et code requis' });
+
+  const record = otpStore[email.toLowerCase()];
+  if (!record) return res.status(400).json({ error: 'Aucun code envoyé' });
+  if (record.used) return res.status(400).json({ error: 'Code déjà utilisé' });
+  if (Date.now() > record.expiresAt) {
+    delete otpStore[email.toLowerCase()];
+    return res.status(400).json({ error: 'Code expiré' });
+  }
+  if (record.code !== otp) return res.status(400).json({ error: 'Code incorrect' });
+
+  record.used = true;
+  setTimeout(() => delete otpStore[email.toLowerCase()], 60 * 1000);
+  res.json({ ok: true });
+});
 
 router.post('/register', (req, res) => {
   const db = getDb();
