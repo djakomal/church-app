@@ -1,6 +1,6 @@
 import { useT } from '@/context/I18nContext';
 import { ThemedText } from '@/components/ThemedText';
-import { useAuth, UserRole } from '@/context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,18 +16,12 @@ import {
   View,
 } from 'react-native';
 
-const ROLES: { key: UserRole; label: string; icon: keyof typeof Ionicons.glyphMap; desc: string; color: string }[] = [
-  { key: 'editor', label: 'Chantre', icon: 'musical-notes', desc: 'Créer et gérer les cultes', color: '#8b5cf6' },
-  { key: 'viewer', label: 'Musicien', icon: 'musical-note', desc: 'Voir les cultes et les chants', color: '#06b6d4' },
-];
-
 export default function LoginScreen() {
   const t = useT();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
 
   const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
@@ -39,10 +33,6 @@ export default function LoginScreen() {
   const insets = useSafeAreaInsets();
 
   const { login } = useAuth();
-
-  const handleRoleSelect = (role: UserRole) => {
-    setSelectedRole(selectedRole === role ? null : role);
-  };
 
   const handleLogin = async () => {
     if (!email.trim()) {
@@ -84,48 +74,6 @@ export default function LoginScreen() {
           </View>
 
           <View style={[styles.card, { backgroundColor: cardColor, borderColor }]}>
-            <View style={styles.roleSelector}>
-              {ROLES.map(r => (
-                <TouchableOpacity
-                  key={r.key}
-                  style={[
-                    styles.roleCard,
-                    {
-                      borderColor: selectedRole === r.key ? r.color : borderColor,
-                      backgroundColor: selectedRole === r.key ? r.color + '12' : 'transparent',
-                    },
-                  ]}
-                  onPress={() => handleRoleSelect(r.key)}
-                  activeOpacity={0.7}
-                >
-                  <View style={[styles.roleIconWrap, { backgroundColor: r.color + '20' }]}>
-                    <Ionicons name={r.icon} size={24} color={r.color} />
-                  </View>
-                  <View style={styles.roleTextWrap}>
-                    <ThemedText style={[styles.roleLabel, { color: textColor }]}>
-                      {r.label}
-                    </ThemedText>
-                    <ThemedText style={[styles.roleDesc, { color: secondaryColor }]}>
-                      {r.desc}
-                    </ThemedText>
-                  </View>
-                  {selectedRole === r.key && (
-                    <View style={[styles.roleCheck, { backgroundColor: r.color }]}>
-                      <Ionicons name="checkmark" size={14} color="white" />
-                    </View>
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <View style={styles.divider}>
-              <View style={[styles.dividerLine, { backgroundColor: borderColor }]} />
-              <ThemedText style={[styles.dividerText, { color: secondaryColor }]}>
-                ou connectez-vous
-              </ThemedText>
-              <View style={[styles.dividerLine, { backgroundColor: borderColor }]} />
-            </View>
-
             <View style={styles.inputGroup}>
               <View style={[styles.inputContainer, { borderColor, backgroundColor: backgroundColor }]}>
                 <Ionicons name="mail-outline" size={18} color={placeholderColor} />

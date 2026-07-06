@@ -30,7 +30,6 @@ function RootLayoutInner() {
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                 <Stack.Screen name="worship-management" options={{ headerShown: false }} />
                 <Stack.Screen name="my-songs" options={{ headerShown: false }} />
-                <Stack.Screen name="user-management" options={{ headerShown: false }} />
                 <Stack.Screen name="+not-found" />
               </Stack>
               <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />

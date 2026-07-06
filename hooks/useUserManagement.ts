@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { useColorScheme } from '@/hooks/useColorScheme';
 import { Alert } from 'react-native';
+import { simpleUserManagement } from '@/database/userManagement';
+
 
 // Types
 export interface Role {
@@ -226,14 +227,34 @@ export function useUserManagement(): UserManagementState & UserManagementActions
   });
 
   const { user } = useAuth();
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
 
-  useEffect(() => {
-    loadAllData();
+  const loadUsers = useCallback(async () => {
+    try {
+      const dbUsers = await simpleUserManagement.getAllUsers();
+      const users: User[] = dbUsers.map((dbUser: any) => ({
+        id: dbUser.id,
+        name: dbUser.name,
+        email: dbUser.email,
+        role: dbUser.role as UserRole,
+        roles: dbUser.roles || [dbUser.role],
+        permissions: Object.entries(dbUser.permissions || {})
+          .filter(([_, val]) => val)
+          .map(([key]) => ({ id: key, name: key, description: '', category: 'system' as const, resource: key, action: 'manage' as const })),
+        status: dbUser.status || 'active',
+        created_at: dbUser.created_at,
+        updated_at: dbUser.updated_at,
+        phone: dbUser.phone,
+        department: dbUser.department,
+        position: dbUser.position,
+      }));
+      setState(prev => ({ ...prev, users }));
+    } catch (error) {
+      console.error('Erreur lors du chargement des utilisateurs:', error);
+      throw error;
+    }
   }, []);
 
-  const loadAllData = async () => {
+  const loadAllData = useCallback(async () => {
     setState(prev => ({ ...prev, isLoading: true, error: null }));
     try {
       await loadUsers();
@@ -246,42 +267,11 @@ export function useUserManagement(): UserManagementState & UserManagementActions
     } finally {
       setState(prev => ({ ...prev, isLoading: false }));
     }
-  };
+  }, [loadUsers]);
 
-  const loadUsers = useCallback(async () => {
-    try {
-      const { simpleUserManagement } = await import('@/database/userManagement');
-      const dbUsers = await simpleUserManagement.getAllUsers();
-      const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
-      const overridesJson = await AsyncStorage.getItem('church_app_permission_overrides');
-      const overrides: Record<string, Record<string, boolean>> = overridesJson ? JSON.parse(overridesJson) : {};
-      const users: User[] = dbUsers.map((dbUser: any) => {
-        const userOverrides = overrides[dbUser.id] || {};
-        const mergedPerms = { ...(dbUser.permissions || {}), ...userOverrides };
-        return {
-          id: dbUser.id,
-          name: dbUser.name,
-          email: dbUser.email,
-          role: dbUser.role as UserRole,
-          roles: dbUser.roles || [dbUser.role],
-          permissions: Object.entries(mergedPerms)
-            .filter(([_, val]) => val)
-            .map(([key]) => ({ id: key, name: key, description: '', category: 'system' as const, resource: key, action: 'manage' as const })),
-          status: dbUser.status || 'active',
-          created_at: dbUser.created_at,
-          updated_at: dbUser.updated_at,
-          phone: dbUser.phone,
-          department: dbUser.department,
-          position: dbUser.position,
-        };
-      });
-      setState(prev => ({ ...prev, users }));
-    } catch (error) {
-      console.error('Erreur lors du chargement des utilisateurs:', error);
-      error;
-      throw error;
-    }
-  }, []);
+  useEffect(() => {
+    loadAllData();
+  }, [loadAllData]);
 
   const createUser = useCallback(async (userData: Omit<User, 'id' | 'created_at' | 'updated_at'>) => {
     try {
@@ -290,8 +280,6 @@ export function useUserManagement(): UserManagementState & UserManagementActions
       }
 
       setState(prev => ({ ...prev, isLoading: true, error: null }));
-      
-      const { simpleUserManagement } = await import('@/database/userManagement');
       
       const normalizedEmail = userData.email.toLowerCase();
       const existingUser = state.users.find(u => u.email === normalizedEmail);
@@ -323,8 +311,6 @@ export function useUserManagement(): UserManagementState & UserManagementActions
   const updateUser = useCallback(async (id: string, userData: Partial<User>) => {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
-      
-      const { simpleUserManagement } = await import('@/database/userManagement');
       
       const userToUpdate = state.users.find(u => u.id === id);
       if (!userToUpdate) {
@@ -363,22 +349,6 @@ export function useUserManagement(): UserManagementState & UserManagementActions
         throw new Error('Impossible de supprimer l\'administrateur principal');
       }
       
-      const confirmDelete = await new Promise<boolean>((resolve) => {
-        Alert.alert(
-          'Confirmer la suppression',
-          `Êtes-vous sûr de vouloir supprimer ${userToDelete.name} ? Cette action est irréversible.`,
-          [
-            { text: 'Annuler', style: 'cancel', onPress: () => resolve(false) },
-            { text: 'Supprimer', style: 'destructive', onPress: () => resolve(true) },
-          ]
-        );
-      });
-      
-      if (!confirmDelete) {
-        return;
-      }
-      
-      const { simpleUserManagement } = await import('@/database/userManagement');
       await simpleUserManagement.deleteUser(id);
       await loadUsers();
       
@@ -670,7 +640,7 @@ export function useUserManagement(): UserManagementState & UserManagementActions
     setState(prev => ({ ...prev, isPermissionModalOpen: false }));
   }, []);
 
-  const filteredUsers = state.users.filter(user => {
+  const filteredUsers = useMemo(() => state.users.filter(user => {
     const roleMatch = state.filterRole === 'all' || user.roles.includes(state.filterRole);
     const statusMatch = state.filterStatus === 'all' || user.status === state.filterStatus;
     const searchMatch = state.searchQuery === '' || 
@@ -678,7 +648,7 @@ export function useUserManagement(): UserManagementState & UserManagementActions
       user.email.toLowerCase().includes(state.searchQuery.toLowerCase()) ||
       user.role.toLowerCase().includes(state.searchQuery.toLowerCase());
     return roleMatch && statusMatch && searchMatch;
-  });
+  }), [state.users, state.filterRole, state.filterStatus, state.searchQuery]);
 
   return {
     ...state,

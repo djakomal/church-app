@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { Alert, ScrollView, StyleSheet, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { useAuth } from '@/context/AuthContext';
-import { useSongs, useTeamMembers } from '@/hooks/useSimpleDatabase';
+import { useSongs, useTeamMembers, useWorships } from '@/hooks/useSimpleDatabase';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { LoadingIndicator } from '@/components/LoadingIndicator';
@@ -450,6 +450,15 @@ export default function WorshipManagementScreen() {
     deleteTeamMember
   } = useTeamMembers();
 
+  const {
+    worships: dbWorships,
+    isLoading: worshipsLoading,
+    error: worshipsError,
+    createWorship,
+    updateWorship,
+    deleteWorship
+  } = useWorships();
+
   const canManageSongs = hasPermission('canManageSongs');
   const canManageTeam = hasPermission('canManageTeam');
   const canManageWorship = hasPermission('canManageWorship');
@@ -555,23 +564,6 @@ export default function WorshipManagementScreen() {
     }
   }, [editingTeamMember, updateTeamMember, createTeamMember, t]);
 
-  const [localWorships, setLocalWorships] = useState<Worship[]>([
-    {
-      id: 1,
-      title: 'Culte du Dimanche',
-      date: '2024-12-22',
-      time: '10:00',
-      location: 'Sanctuaire principal',
-      theme: 'L\'amour de Dieu',
-      preacher: 'Pasteur Martin',
-      description: 'Culte de louange et d\'adoration',
-      songs: ['Amazing Grace', 'How Great Thou Art'],
-      musicians: ['Jean Dupont', 'Marie Martin'],
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }
-  ]);
-
   const handleAddWorship = useCallback(() => {
     if (!canManageWorship) {
       Alert.alert(t('common.accessDenied'), t('worships.accessDeniedAdd'));
@@ -586,12 +578,12 @@ export default function WorshipManagementScreen() {
       Alert.alert(t('common.accessDenied'), t('worships.accessDeniedEdit'));
       return;
     }
-    const worship = localWorships.find(w => w.id === id);
+    const worship = dbWorships.find(w => w.id === id);
     if (worship) {
       setEditingWorship(worship);
       setShowWorshipModal(true);
     }
-  }, [canManageWorship, localWorships, t]);
+  }, [canManageWorship, dbWorships, t]);
 
   const handleDeleteWorship = useCallback((id: number) => {
     if (!canManageWorship) {
@@ -606,36 +598,34 @@ export default function WorshipManagementScreen() {
         {
           text: t('common.delete'),
           style: 'destructive',
-          onPress: () => {
-            setLocalWorships(prev => prev.filter(w => w.id !== id));
-            Alert.alert(t('common.success'), t('worships.deletedSuccess'));
+          onPress: async () => {
+            try {
+              await deleteWorship(id);
+              Alert.alert(t('common.success'), t('worships.deletedSuccess'));
+            } catch (error) {
+              Alert.alert(t('common.error'), t('worships.deleteError'));
+            }
           }
         }
       ]
     );
-  }, [canManageWorship, t]);
+  }, [canManageWorship, deleteWorship, t]);
 
-  const handleSaveWorship = useCallback((worshipData: Omit<Worship, 'id' | 'created_at' | 'updated_at'>) => {
-    if (editingWorship && editingWorship.id) {
-      setLocalWorships(prev => prev.map(w => 
-        w.id === editingWorship.id 
-          ? { ...w, ...worshipData, updated_at: new Date().toISOString() }
-          : w
-      ));
-      Alert.alert(t('common.success'), t('worships.updatedSuccess'));
-    } else {
-      const newWorship: Worship = {
-        ...worshipData,
-        id: Math.max(...localWorships.map(w => w.id || 0), 0) + 1,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-      setLocalWorships(prev => [...prev, newWorship]);
-      Alert.alert(t('common.success'), t('worships.createdSuccess'));
+  const handleSaveWorship = useCallback(async (worshipData: Omit<Worship, 'id' | 'created_at' | 'updated_at'>) => {
+    try {
+      if (editingWorship && editingWorship.id) {
+        await updateWorship(editingWorship.id, worshipData);
+        Alert.alert(t('common.success'), t('worships.updatedSuccess'));
+      } else {
+        await createWorship(worshipData);
+        Alert.alert(t('common.success'), t('worships.createdSuccess'));
+      }
+      setShowWorshipModal(false);
+      setEditingWorship(null);
+    } catch (error) {
+      Alert.alert(t('common.error'), t('worships.saveError'));
     }
-    setShowWorshipModal(false);
-    setEditingWorship(null);
-  }, [editingWorship, localWorships, t]);
+  }, [editingWorship, updateWorship, createWorship, t]);
 
   const [localNotifications, setLocalNotifications] = useState<NotificationData[]>([
     {
@@ -788,7 +778,7 @@ export default function WorshipManagementScreen() {
             
             <PermissionGate permission="canManageWorship">
               <WorshipManagementSection
-                worships={localWorships}
+                worships={dbWorships}
                 canManageWorship={canManageWorship}
                 onAddWorship={handleAddWorship}
                 onEditWorship={handleEditWorship}

@@ -3,6 +3,7 @@ import { NotificationFormModal, NotificationData } from '@/components/Notificati
 import { ThemedText } from '@/components/ThemedText';
 import { WorshipCard } from '@/components/WorshipCard';
 import { WorshipFormModal, Worship } from '@/components/WorshipFormModal';
+import { WorshipAssignmentModal } from '@/components/WorshipAssignmentModal';
 import { useAuth } from '@/context/AuthContext';
 import { useT } from '@/context/I18nContext';
 import { useThemeColor } from '@/hooks/useThemeColor';
@@ -54,6 +55,8 @@ export default function WorshipManagementTabScreen() {
   const [editingNotification, setEditingNotification] = useState<NotificationData | null>(null);
   const [showMusicianModal, setShowMusicianModal] = useState(false);
   const [editingMusician, setEditingMusician] = useState<Musician | null>(null);
+  const [showAssignmentModal, setShowAssignmentModal] = useState(false);
+  const [assigningWorship, setAssigningWorship] = useState<Worship | null>(null);
 
   if (!user || !hasPermission('canManageWorship')) {
     return (
@@ -207,6 +210,37 @@ export default function WorshipManagementTabScreen() {
     setEditingMusician(null);
   };
 
+  const handleAssignMusicians = (worship: Worship) => {
+    setAssigningWorship(worship);
+    setShowAssignmentModal(true);
+  };
+
+  const handleSaveAssignments = async (musicianIds: number[]) => {
+    if (!assigningWorship?.id) return;
+    try {
+      const musicianNames = musicianIds
+        .map(id => musicians.find(m => m.id === id)?.name || '')
+        .filter(Boolean);
+      await updateWorship(assigningWorship.id, {
+        title: assigningWorship.title,
+        date: assigningWorship.date,
+        time: assigningWorship.time,
+        location: assigningWorship.location || '',
+        theme: assigningWorship.theme || '',
+        preacher: assigningWorship.preacher || '',
+        description: assigningWorship.description || '',
+        songs: assigningWorship.songs || [],
+        musicians: musicianNames,
+        assignedMusicians: musicianIds,
+      });
+      Alert.alert(t('common.success'), t('worships.musiciansAssigned'));
+      setShowAssignmentModal(false);
+      setAssigningWorship(null);
+    } catch (error) {
+      Alert.alert(t('common.error'), t('worships.assignError'));
+    }
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -259,6 +293,7 @@ export default function WorshipManagementTabScreen() {
                   musicians={worship.musicians}
                   onEdit={() => handleEditWorship(worship.id!)}
                   onDelete={() => handleDeleteWorship(worship.id!)}
+                  onAssignMusicians={() => handleAssignMusicians(worship)}
                 />
               ))}
             </View>
@@ -393,6 +428,16 @@ export default function WorshipManagementTabScreen() {
         musician={editingMusician}
         onClose={handleCloseMusicianModal}
         onSave={handleSaveMusician}
+      />
+
+      <WorshipAssignmentModal
+        visible={showAssignmentModal}
+        selectedIds={assigningWorship?.assignedMusicians || []}
+        onClose={() => {
+          setShowAssignmentModal(false);
+          setAssigningWorship(null);
+        }}
+        onSave={handleSaveAssignments}
       />
     </SafeAreaView>
   );

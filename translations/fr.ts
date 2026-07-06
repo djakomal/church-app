@@ -160,6 +160,9 @@ const fr: Record<string, string> = {
   'register.passwordTooShort': 'Le mot de passe doit contenir au moins 6 caractères',
   'register.passwordMismatch': 'Les mots de passe ne correspondent pas',
   'register.error': 'Erreur lors de l\'inscription',
+  'register.instruments': 'Instruments',
+  'register.instrumentPlaceholder': 'Ajouter un instrument',
+  'register.voiceType': 'Type de voix',
 
   'home.title': 'Accueil',
   'home.welcome': 'Bienvenue, {name}',
@@ -240,6 +243,8 @@ const fr: Record<string, string> = {
   'worships.accessDeniedAdd': 'Vous n\'avez pas la permission de créer des cultes.',
   'worships.accessDeniedEdit': 'Vous n\'avez pas la permission de modifier des cultes.',
   'worships.accessDeniedDelete': 'Vous n\'avez pas la permission de supprimer des cultes.',
+  'worships.musiciansAssigned': 'Musiciens assignés avec succès',
+  'worships.assignError': 'Erreur lors de l\'assignation des musiciens',
 
   'team.title': 'Équipe',
   'team.add': 'Ajouter un membre',
@@ -360,6 +365,7 @@ const fr: Record<string, string> = {
   'worshipFormModal.timeRequired': 'L\'heure est obligatoire',
   'worshipFormModal.invalidDate': 'Format de date invalide (YYYY-MM-DD)',
   'worshipFormModal.invalidTime': 'Format d\'heure invalide (HH:MM)',
+  'worshipFormModal.selectMusicians': 'Choisir musiciens/chantres',
 
   'worshipDetailsForm.duplicateSuccess': 'Le culte a été dupliqué avec succès',
   'worshipDetailsForm.duplicateError': 'Impossible de dupliquer le culte: {message}',

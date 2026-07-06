@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, FlatList, TextInput, Alert, Switch } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
 import { useUserManagement } from '@/hooks/useUserManagement';
@@ -294,12 +294,6 @@ export function UserManagementScreen({ onClose }: UserManagementScreenProps) {
     }
   };
 
-  useEffect(() => {
-    if (isAdmin) {
-      userManagement.refreshData();
-    }
-  }, [isAdmin, userManagement.refreshData]);
-
   const getRoleColor = (role: string) => {
     switch (role.toLowerCase()) {
       case 'admin':
@@ -382,6 +376,10 @@ export function UserManagementScreen({ onClose }: UserManagementScreenProps) {
   const handleEditUser = (user: any) => {
     userManagement.setSelectedUser(user);
     userManagement.openUserModal();
+    Alert.alert(
+      t('um.edit'),
+      `${t('auth.name')}: ${user.name}\n${t('auth.email')}: ${user.email}\n${t('um.roles')}: ${getRoleDisplayName(user.role || user.roles?.[0] || 'guest')}`
+    );
   };
 
   const handleDeleteUser = async (user: any) => {
@@ -553,10 +551,8 @@ export function UserManagementScreen({ onClose }: UserManagementScreenProps) {
       <FlatList
         data={filteredUsers}
         renderItem={({ item }) => (
-          <TouchableOpacity
+          <View
             style={[styles.userCard, item.id === userManagement.selectedUser?.id && styles.userCardSelected]}
-            onPress={() => handleUserPress(item)}
-            activeOpacity={0.7}
           >
             <View style={styles.userHeader}>
               <View style={styles.userInfo}>
@@ -627,7 +623,7 @@ export function UserManagementScreen({ onClose }: UserManagementScreenProps) {
                 );
               })()}
             </View>
-          </TouchableOpacity>
+          </View>
         )}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}

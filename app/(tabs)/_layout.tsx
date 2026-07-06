@@ -60,9 +60,7 @@ export default function TabLayout() {
             ),
           }}
         />
-        <Tabs.Screen name="index" options={{ href: null }} />
-        <Tabs.Screen name="explore" options={{ href: null }} />
-        <Tabs.Screen name="more" options={{ href: null }} />
+        <Tabs.Screen name="user-management" options={{ href: null, headerShown: false }} />
         <Tabs.Screen
           name="songs"
           options={{

@@ -27,7 +27,12 @@ export default function RegisterScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [selectedRole, setSelectedRole] = useState<'viewer' | 'editor'>('viewer');
+  const [instruments, setInstruments] = useState<string[]>([]);
+  const [instrumentInput, setInstrumentInput] = useState('');
+  const [voiceType, setVoiceType] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  const instrumentOptions = ['Guitare', 'Piano', 'Batterie', 'Basse', 'Clavier', 'Violon', 'Saxophone', 'Flûte', 'Trompette', 'Percussions'];
 
   const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
@@ -78,7 +83,10 @@ export default function RegisterScreen() {
         name: formData.name.trim(),
         email: formData.email.trim().toLowerCase(),
         password: formData.password,
-        role: selectedRole
+        role: selectedRole,
+        musicianType: selectedRole === 'viewer' ? 'instrumentiste' : 'chantre',
+        instruments: selectedRole === 'viewer' ? instruments : undefined,
+        voiceType: selectedRole === 'editor' ? voiceType : undefined,
       });
 
       if (success) {
@@ -280,6 +288,89 @@ export default function RegisterScreen() {
               </View>
             </View>
 
+            {/* Instruments (for musicien) */}
+            {selectedRole === 'viewer' && (
+              <View style={styles.inputGroup}>
+                <ThemedText style={[styles.label, { color: textColor }]}>
+                  {t('register.instruments')}
+                </ThemedText>
+                <View style={[styles.inputContainer, { borderColor }]}>
+                  <Ionicons name="musical-notes" size={20} color={placeholderColor} />
+                  <TextInput
+                    style={[styles.input, { color: textColor }]}
+                    value={instrumentInput}
+                    onChangeText={setInstrumentInput}
+                    placeholder={t('register.instrumentPlaceholder')}
+                    placeholderTextColor={placeholderColor}
+                    onSubmitEditing={() => {
+                      const trimmed = instrumentInput.trim();
+                      if (trimmed && !instruments.includes(trimmed)) {
+                        setInstruments(prev => [...prev, trimmed]);
+                      }
+                      setInstrumentInput('');
+                    }}
+                  />
+                  <TouchableOpacity
+                    onPress={() => {
+                      const trimmed = instrumentInput.trim();
+                      if (trimmed && !instruments.includes(trimmed)) {
+                        setInstruments(prev => [...prev, trimmed]);
+                      }
+                      setInstrumentInput('');
+                    }}
+                    style={styles.addInstrumentButton}
+                  >
+                    <Ionicons name="add-circle" size={24} color={primaryColor} />
+                  </TouchableOpacity>
+                </View>
+                {instruments.length > 0 && (
+                  <View style={styles.selectedInstrumentsList}>
+                    {instruments.map((inst, idx) => (
+                      <View key={idx} style={[styles.instrumentTag, { backgroundColor: primaryColor + '20', borderColor: primaryColor }]}>
+                        <ThemedText style={[styles.instrumentTagText, { color: primaryColor }]}>
+                          {inst}
+                        </ThemedText>
+                        <TouchableOpacity onPress={() => setInstruments(prev => prev.filter((_, i) => i !== idx))}>
+                          <Ionicons name="close-circle" size={16} color={primaryColor} />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            )}
+
+            {/* Voice Type (for chantre) */}
+            {selectedRole === 'editor' && (
+              <View style={styles.inputGroup}>
+                <ThemedText style={[styles.label, { color: textColor }]}>
+                  {t('register.voiceType')}
+                </ThemedText>
+                <View style={styles.voiceOptions}>
+                  {['Soprano', 'Alto', 'Ténor', 'Basse'].map(vt => (
+                    <TouchableOpacity
+                      key={vt}
+                      style={[
+                        styles.voiceOption,
+                        { borderColor: voiceType === vt ? primaryColor : borderColor },
+                        voiceType === vt && { backgroundColor: primaryColor + '15' }
+                      ]}
+                      onPress={() => setVoiceType(vt)}
+                    >
+                      <Ionicons
+                        name={voiceType === vt ? 'radio-button-on' : 'radio-button-off'}
+                        size={18}
+                        color={voiceType === vt ? primaryColor : secondaryColor}
+                      />
+                      <ThemedText style={[styles.voiceOptionText, { color: textColor }]}>
+                        {vt}
+                      </ThemedText>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
+
             {/* Register Button */}
             <TouchableOpacity
               style={[styles.registerButton, { backgroundColor: primaryColor }]}
@@ -442,6 +533,44 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 18,
     fontWeight: '600',
+  },
+  selectedInstrumentsList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 8,
+  },
+  instrumentTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  instrumentTagText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  addInstrumentButton: {
+    padding: 4,
+  },
+  voiceOptions: {
+    gap: 8,
+  },
+  voiceOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  voiceOptionText: {
+    fontSize: 15,
+    fontWeight: '500',
   },
   loginLink: {
     flexDirection: 'row',

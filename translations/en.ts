@@ -160,6 +160,9 @@ const en: Record<string, string> = {
   'register.passwordTooShort': 'Password must be at least 6 characters',
   'register.passwordMismatch': 'Passwords do not match',
   'register.error': 'Error during registration',
+  'register.instruments': 'Instruments',
+  'register.instrumentPlaceholder': 'Add an instrument',
+  'register.voiceType': 'Voice type',
 
   'home.title': 'Home',
   'home.welcome': 'Welcome, {name}',
@@ -240,6 +243,8 @@ const en: Record<string, string> = {
   'worships.accessDeniedAdd': 'You do not have permission to create worships.',
   'worships.accessDeniedEdit': 'You do not have permission to edit worships.',
   'worships.accessDeniedDelete': 'You do not have permission to delete worships.',
+  'worships.musiciansAssigned': 'Musicians assigned successfully',
+  'worships.assignError': 'Error assigning musicians',
 
   'team.title': 'Team',
   'team.add': 'Add Member',
@@ -360,6 +365,7 @@ const en: Record<string, string> = {
   'worshipFormModal.timeRequired': 'Time is required',
   'worshipFormModal.invalidDate': 'Invalid date format (YYYY-MM-DD)',
   'worshipFormModal.invalidTime': 'Invalid time format (HH:MM)',
+  'worshipFormModal.selectMusicians': 'Select musicians/singers',
 
   'worshipDetailsForm.duplicateSuccess': 'Worship duplicated successfully',
   'worshipDetailsForm.duplicateError': 'Could not duplicate worship: {message}',

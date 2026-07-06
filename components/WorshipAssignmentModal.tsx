@@ -36,10 +36,23 @@ export function WorshipAssignmentModal({
   const t = useT();
   const { musicians, isLoading } = useMusicians();
   const [selected, setSelected] = useState<number[]>(selectedIds);
+  const [typeFilter, setTypeFilter] = useState<'all' | 'chantre' | 'instrumentiste'>('all');
+  const [voiceFilter, setVoiceFilter] = useState<string>('');
+  const [instrumentFilter, setInstrumentFilter] = useState<string>('');
 
   useEffect(() => {
     setSelected(selectedIds);
   }, [selectedIds, visible]);
+
+  const allVoiceTypes = [...new Set(musicians.filter(m => m.voiceType).map(m => m.voiceType!))];
+  const allInstruments = [...new Set(musicians.filter(m => m.instruments).flatMap(m => m.instruments!))];
+
+  const filteredMusicians = musicians.filter(m => {
+    if (typeFilter !== 'all' && m.type !== typeFilter) return false;
+    if (voiceFilter && m.voiceType !== voiceFilter) return false;
+    if (instrumentFilter && (!m.instruments || !m.instruments.includes(instrumentFilter))) return false;
+    return true;
+  });
 
   const toggleMusician = (id: number) => {
     setSelected(prev =>
@@ -76,20 +89,45 @@ export function WorshipAssignmentModal({
           </TouchableOpacity>
         </View>
 
+        {musicians.length > 1 && (
+          <View style={styles.filterBar}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+              <TouchableOpacity
+                style={[styles.filterChip, { borderColor }, typeFilter === 'all' && { backgroundColor: primaryColor, borderColor: primaryColor }]}
+                onPress={() => { setTypeFilter('all'); setVoiceFilter(''); setInstrumentFilter(''); }}
+              >
+                <ThemedText style={[styles.filterChipText, { color: typeFilter === 'all' ? 'white' : textColor }]}>Tous</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterChip, { borderColor }, typeFilter === 'chantre' && { backgroundColor: primaryColor, borderColor: primaryColor }]}
+                onPress={() => { setTypeFilter('chantre'); setVoiceFilter(''); setInstrumentFilter(''); }}
+              >
+                <ThemedText style={[styles.filterChipText, { color: typeFilter === 'chantre' ? 'white' : textColor }]}>Chantres</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterChip, { borderColor }, typeFilter === 'instrumentiste' && { backgroundColor: primaryColor, borderColor: primaryColor }]}
+                onPress={() => { setTypeFilter('instrumentiste'); setVoiceFilter(''); setInstrumentFilter(''); }}
+              >
+                <ThemedText style={[styles.filterChipText, { color: typeFilter === 'instrumentiste' ? 'white' : textColor }]}>Instrumentistes</ThemedText>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        )}
+
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {isLoading ? (
             <ThemedText style={[styles.loadingText, { color: secondaryColor }]}>
               Chargement...
             </ThemedText>
-          ) : musicians.length === 0 ? (
+          ) : filteredMusicians.length === 0 ? (
             <View style={styles.emptyState}>
               <Ionicons name="people-outline" size={48} color={secondaryColor} />
               <ThemedText style={[styles.emptyText, { color: secondaryColor }]}>
-                Aucun musicien disponible. Ajoutez-en d'abord.
+                Aucun musicien trouvé pour ces filtres.
               </ThemedText>
             </View>
           ) : (
-            musicians.map(musician => {
+            filteredMusicians.map(musician => {
               const isSelected = selected.includes(musician.id!);
               return (
                 <TouchableOpacity
@@ -203,6 +241,28 @@ const styles = StyleSheet.create({
   },
   musicianType: {
     fontSize: 13,
+  },
+  filterBar: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+    gap: 8,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingVertical: 4,
+  },
+  filterChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  filterChipText: {
+    fontSize: 13,
+    fontWeight: '500',
   },
   checkbox: {
     width: 24,

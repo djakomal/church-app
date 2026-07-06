@@ -195,32 +195,32 @@ export function WorshipCard({
           </View>
         </View>
 
-        {location && (
+        {location ? (
           <View style={styles.infoRow}>
             <Ionicons name="location" size={16} color={secondaryColor} />
             <ThemedText style={[styles.infoText, { color: secondaryColor }]}>
               {location}
             </ThemedText>
           </View>
-        )}
+        ) : null}
 
-        {theme && (
+        {theme ? (
           <View style={styles.infoRow}>
             <Ionicons name="book" size={16} color={secondaryColor} />
             <ThemedText style={[styles.infoText, { color: secondaryColor }]}>
               Thème: {theme}
             </ThemedText>
           </View>
-        )}
+        ) : null}
 
-        {preacher && (
+        {preacher ? (
           <View style={styles.infoRow}>
             <Ionicons name="person" size={16} color={secondaryColor} />
             <ThemedText style={[styles.infoText, { color: secondaryColor }]}>
               Prédicateur: {preacher}
             </ThemedText>
           </View>
-        )}
+        ) : null}
 
         {songs && songs.length > 0 && (
           <View style={styles.infoRow}>
