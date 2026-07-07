@@ -6,6 +6,7 @@ export interface Notification {
   message: string;
   type: string;
   targetAudience: string;
+  userId: string;
   isScheduled: boolean;
   scheduledDate: string;
   sent_at: string;
@@ -15,7 +16,7 @@ export interface Notification {
 }
 
 export const notificationsApi = {
-  getAll: () => api.get<Notification[]>('/notifications'),
+  getAll: (userId?: string) => api.get<Notification[]>(`/notifications${userId ? `?userId=${userId}` : ''}`),
   getById: (id: number) => api.get<Notification>(`/notifications/${id}`),
   create: (data: Omit<Notification, 'id' | 'created_at' | 'updated_at'>) => api.post<Notification>('/notifications', data),
   update: (id: number, data: Partial<Notification>) => api.put<Notification>(`/notifications/${id}`, data),

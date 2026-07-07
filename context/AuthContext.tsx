@@ -1,4 +1,4 @@
-import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
+import React, { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 import { authApi, setToken, getToken } from '@/api/auth';
 import { usersApi } from '@/api/users';
 import { simpleDatabase } from '@/database/simpleDatabase';
@@ -33,7 +33,7 @@ interface AuthContextType {
   user: UserType | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
-  requestOTP: (email: string) => Promise<{ ok: boolean; reason?: string; otp?: string }>;
+  requestOTP: (email: string) => Promise<{ ok: boolean; reason?: string; otp?: string; devCode?: string }>;
   verifyOTP: (email: string, otp: string) => Promise<{ ok: boolean; reason?: string }>;
   register: (data: RegisterData) => Promise<boolean>;
   logout: () => Promise<void>;
@@ -59,7 +59,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 function mapPermissions(apiPerms: Record<string, boolean>): Permissions {
   return {
-    canManageWorship: apiPerms.canCreateCults || apiPerms.canManageAllCults || false,
+    canManageWorship: apiPerms.canCreateCults || apiPerms.canEditCults || apiPerms.canManageAllCults || false,
     canManageSongs: apiPerms.canManageSongs || false,
     canManageTeam: apiPerms.canManageUsers || false,
     canSendCommunications: apiPerms.canSendGlobalNotifications || false,
@@ -89,22 +89,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    initializeApp();
-  }, []);
-
-  const initializeApp = async () => {
+  const initializeApp = useCallback(async () => {
     try {
       if (getToken()) {
         const apiUser = await authApi.me();
         setUser(toUserType(apiUser));
       }
-    } catch (error) {
+    } catch {
       setToken(null);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    initializeApp();
+    const interval = setInterval(() => {
+      if (getToken()) {
+        authApi.me().then(apiUser => {
+          setUser(toUserType(apiUser));
+        }).catch(() => {});
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [initializeApp]);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
@@ -204,7 +212,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateUserRole = async (userId: string, newRole: UserRole): Promise<boolean> => {
     try {
-      await usersApi.update(userId, { role: newRole } as any);
+      const updated = await usersApi.update(userId, { role: newRole } as any);
+      if (user?.id === userId) {
+        setUser(toUserType(updated));
+      }
       return true;
     } catch {
       return false;

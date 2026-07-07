@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useProgressiveFeatures } from '@/hooks/useProgressiveFeatures';
+import { userSettingsApi } from '@/api/userSettings';
 
 interface UserExperienceState {
   isLoading: boolean;
@@ -35,34 +36,39 @@ export function useUserExperience() {
     accessibilityEnabled: false,
     fontSize: 16,
     theme: 'system',
-    performanceMetrics: {
-      loadTime: 0,
-      renderTime: 0,
-      interactionTime: 0,
-    },
+    performanceMetrics: { loadTime: 0, renderTime: 0, interactionTime: 0 },
   });
 
   const { user } = useAuth();
   const { isDemoMode } = useProgressiveFeatures();
 
-  useEffect(() => {
-    const startTime = performance.now();
-
-    const recordRenderTime = () => {
-      const endTime = performance.now();
+  const loadSettings = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const settings = await userSettingsApi.get(user.id);
       setUxState(prev => ({
         ...prev,
-        performanceMetrics: {
-          ...prev.performanceMetrics,
-          renderTime: endTime - startTime,
-        },
+        accessibilityEnabled: settings.accessibilityEnabled,
+        fontSize: settings.fontSize,
+        theme: settings.theme as 'light' | 'dark' | 'system',
       }));
-    };
+    } catch (error) {
+      console.error('Erreur chargement UX settings:', error);
+    }
+  }, [user?.id]);
 
-    const timeoutId = setTimeout(recordRenderTime, 0);
+  const saveSettings = useCallback(async (updates: { accessibilityEnabled?: boolean; fontSize?: number; theme?: string }) => {
+    if (!user?.id) return;
+    try {
+      await userSettingsApi.update(user.id, updates);
+    } catch (error) {
+      console.error('Erreur sauvegarde UX settings:', error);
+    }
+  }, [user?.id]);
 
-    return () => clearTimeout(timeoutId);
-  }, []);
+  useEffect(() => {
+    loadSettings();
+  }, [loadSettings]);
 
   const setLoading = useCallback((loading: boolean) => {
     setUxState(prev => ({ ...prev, isLoading: loading }));
@@ -70,115 +76,48 @@ export function useUserExperience() {
 
   const setError = useCallback((error: string | null) => {
     setUxState(prev => ({ ...prev, error }));
-    if (error) {
-      trackError(error);
-    }
   }, []);
 
   const recordActivity = useCallback(() => {
-    setUxState(prev => ({
-      ...prev,
-      lastActivity: Date.now(),
-    }));
+    setUxState(prev => ({ ...prev, lastActivity: Date.now() }));
   }, []);
 
   const toggleAccessibility = useCallback(() => {
-    setUxState(prev => ({ ...prev, accessibilityEnabled: !prev.accessibilityEnabled }));
-  }, []);
+    const newVal = !uxState.accessibilityEnabled;
+    setUxState(prev => ({ ...prev, accessibilityEnabled: newVal }));
+    saveSettings({ accessibilityEnabled: newVal });
+  }, [uxState.accessibilityEnabled, saveSettings]);
 
   const increaseFontSize = useCallback(() => {
-    setUxState(prev => ({
-      ...prev,
-      fontSize: Math.min(prev.fontSize + 2, 24),
-    }));
-  }, []);
+    const newSize = Math.min(uxState.fontSize + 2, 24);
+    setUxState(prev => ({ ...prev, fontSize: newSize }));
+    saveSettings({ fontSize: newSize });
+  }, [uxState.fontSize, saveSettings]);
 
   const decreaseFontSize = useCallback(() => {
-    setUxState(prev => ({
-      ...prev,
-      fontSize: Math.max(prev.fontSize - 2, 12),
-    }));
-  }, []);
+    const newSize = Math.max(uxState.fontSize - 2, 12);
+    setUxState(prev => ({ ...prev, fontSize: newSize }));
+    saveSettings({ fontSize: newSize });
+  }, [uxState.fontSize, saveSettings]);
 
   const setTheme = useCallback((theme: 'light' | 'dark' | 'system') => {
     setUxState(prev => ({ ...prev, theme }));
-  }, []);
+    saveSettings({ theme });
+  }, [saveSettings]);
 
   const clearError = useCallback(() => {
     setUxState(prev => ({ ...prev, error: null }));
   }, []);
 
-  const trackError = async (error: string) => {
-    try {
-      const { trackUserJourney } = await import('@/utils/behaviorAnalytics');
-      await trackUserJourney('/error', 'error_occurred', {
-        error,
-        userId: user?.id,
-        timestamp: Date.now(),
-      });
-    } catch (err) {
-      console.error('Failed to track error:', err);
-    }
-  };
-
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        recordActivity();
-      }
-    };
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        clearError();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    document.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [recordActivity, clearError]);
-
-  useEffect(() => {
-    const interactionStart = performance.now();
-
-    const recordInteractionTime = () => {
-      const endTime = performance.now();
-      setUxState(prev => ({
-        ...prev,
-        performanceMetrics: {
-          ...prev.performanceMetrics,
-          interactionTime: endTime - interactionStart,
-        },
-      }));
-    };
-
-    const timeoutId = setTimeout(recordInteractionTime, 1000);
-
-    return () => clearTimeout(timeoutId);
-  }, []);
-
   return {
     ...uxState,
-    ...{
-      setLoading,
-      setError,
-      recordActivity,
-      toggleAccessibility,
-      increaseFontSize,
-      decreaseFontSize,
-      setTheme,
-      clearError,
-    },
-  } as UserExperienceState & UserExperienceActions & {
-    recordActivity: () => void;
-    increaseFontSize: () => void;
-    decreaseFontSize: () => void;
-    setTheme: (theme: 'light' | 'dark' | 'system') => void;
-    clearError: () => void;
+    setLoading,
+    setError,
+    recordActivity,
+    toggleAccessibility,
+    increaseFontSize,
+    decreaseFontSize,
+    setTheme,
+    clearError,
   };
 }

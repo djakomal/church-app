@@ -5,7 +5,13 @@ const router = Router();
 
 router.get('/', (req, res) => {
   const db = getDb();
-  const notifications = db.prepare('SELECT * FROM notifications ORDER BY created_at DESC').all();
+  const { userId } = req.query;
+  let notifications;
+  if (userId) {
+    notifications = db.prepare("SELECT * FROM notifications WHERE userId = ? OR userId = '' ORDER BY created_at DESC").all(userId);
+  } else {
+    notifications = db.prepare('SELECT * FROM notifications ORDER BY created_at DESC').all();
+  }
   res.json(notifications.map(parseNotif));
 });
 
@@ -18,11 +24,11 @@ router.get('/:id', (req, res) => {
 
 router.post('/', (req, res) => {
   const db = getDb();
-  const { title, message, type, targetAudience, isScheduled, scheduledDate } = req.body;
+  const { title, message, type, targetAudience, userId, isScheduled, scheduledDate } = req.body;
   if (!title || !message) return res.status(400).json({ error: 'Titre et message requis' });
-  const result = db.prepare(`INSERT INTO notifications (title, message, type, targetAudience, isScheduled, scheduledDate)
-    VALUES (?, ?, ?, ?, ?, ?)`).run(
-    title, message, type || 'info', targetAudience || 'all',
+  const result = db.prepare(`INSERT INTO notifications (title, message, type, targetAudience, userId, isScheduled, scheduledDate)
+    VALUES (?, ?, ?, ?, ?, ?, ?)`).run(
+    title, message, type || 'info', targetAudience || 'all', userId || '',
     isScheduled ? 1 : 0, scheduledDate || ''
   );
   const n = db.prepare('SELECT * FROM notifications WHERE id = ?').get(result.lastInsertRowid);

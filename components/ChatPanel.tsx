@@ -1,35 +1,60 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from './ThemedText';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
 import { useThemeColor } from '@/hooks/useThemeColor';
+import { messagesApi, Message } from '@/api/messages';
 
 interface ChatPanelProps {
+  discussionId: string;
   discussionTitle: string;
+  userId?: string;
+  userName?: string;
 }
 
-export function ChatPanel({ discussionTitle }: ChatPanelProps) {
-  const [messages, setMessages] = useState([
-    { id: 1, message: 'Bonjour à tous, j\'espère que tout le monde va bien!', time: '10:00', isOwnMessage: true },
-    { id: 2, message: 'Super! Hâte de voir le nouveau répertoire.', time: '10:05', isOwnMessage: false, senderName: 'Sophie Dupont' },
-    { id: 3, message: 'Merci à tous pour la répétition d\'hier soir, c\'était très productif!', time: '10:15', isOwnMessage: false, senderName: 'David Martin' },
-    { id: 4, message: 'Oui, le Seigneur était avec nous. J\'ai hâte pour dimanche!', time: '10:20', isOwnMessage: true },
-  ]);
+export function ChatPanel({ discussionId, discussionTitle, userId, userName }: ChatPanelProps) {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
   const primaryColor = useThemeColor({}, 'primary');
 
-  const handleSendMessage = (newMessage: string) => {
-    const newMsg = {
-      id: messages.length + 1,
-      message: newMessage,
-      time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-      isOwnMessage: true,
-    };
-    setMessages([...messages, newMsg]);
+  const loadMessages = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await messagesApi.getAll(discussionId);
+      setMessages(data);
+    } catch (error) {
+      console.error('Erreur chargement messages:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [discussionId]);
+
+  useEffect(() => {
+    loadMessages();
+  }, [loadMessages]);
+
+  const handleSendMessage = async (newMessage: string) => {
+    try {
+      const msg = await messagesApi.create({
+        discussionId,
+        message: newMessage,
+        senderName: userName || '',
+        userId: userId || '',
+      });
+      setMessages(prev => [...prev, msg]);
+    } catch (error) {
+      console.error('Erreur envoi message:', error);
+    }
+  };
+
+  const formatTime = (createdAt: string) => {
+    const date = new Date(createdAt);
+    return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
   };
 
   return (
@@ -44,11 +69,15 @@ export function ChatPanel({ discussionTitle }: ChatPanelProps) {
       </View>
 
       <ScrollView style={styles.messagesContainer} showsVerticalScrollIndicator={false}>
-        {messages.map((msg) => (
+        {loading ? (
+          <ThemedText style={[styles.loadingText, { color: textColor }]}>Chargement...</ThemedText>
+        ) : messages.length === 0 ? (
+          <ThemedText style={[styles.loadingText, { color: textColor }]}>Aucun message</ThemedText>
+        ) : messages.map((msg) => (
           <ChatMessage
             key={msg.id}
             message={msg.message}
-            time={msg.time}
+            time={formatTime(msg.created_at)}
             isOwnMessage={msg.isOwnMessage}
             senderName={msg.senderName}
           />
@@ -87,5 +116,10 @@ const styles = StyleSheet.create({
   messagesContainer: {
     flex: 1,
     padding: 16,
+  },
+  loadingText: {
+    textAlign: 'center',
+    marginTop: 20,
+    fontSize: 14,
   },
 });

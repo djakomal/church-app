@@ -2,9 +2,10 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Alert } from 'react-native';
 import { simpleUserManagement } from '@/database/userManagement';
+import { rolesApi, Role as ApiRole } from '@/api/roles';
+import { permissionsApi, Permission as ApiPermission } from '@/api/permissions';
+import { usersApi } from '@/api/users';
 
-
-// Types
 export interface Role {
   id: string;
   name: string;
@@ -57,7 +58,6 @@ export interface UserManagementState {
 }
 
 export interface UserManagementActions {
-  // User actions
   loadUsers: () => Promise<void>;
   createUser: (userData: Omit<User, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
   updateUser: (id: string, userData: Partial<User>) => Promise<void>;
@@ -65,8 +65,6 @@ export interface UserManagementActions {
   setSelectedUser: (user: User | null) => void;
   openUserModal: () => void;
   closeUserModal: () => void;
-
-  // Role actions
   loadRoles: () => Promise<void>;
   createRole: (roleData: Omit<Role, 'id'>) => Promise<void>;
   updateRole: (id: string, roleData: Partial<Role>) => Promise<void>;
@@ -75,146 +73,25 @@ export interface UserManagementActions {
   removeRoleFromUser: (userId: string, roleId: string) => Promise<void>;
   openRoleModal: () => void;
   closeRoleModal: () => void;
-
-  // Permission actions
   assignPermissionToRole: (roleId: string, permissionId: string) => Promise<void>;
   removePermissionFromRole: (roleId: string, permissionId: string) => Promise<void>;
   openPermissionModal: () => void;
   closePermissionModal: () => void;
-
-  // Filters and search
   setFilterRole: (role: UserRole | 'all') => void;
   setFilterStatus: (status: User['status'] | 'all') => void;
   setSearchQuery: (query: string) => void;
   refreshData: () => Promise<void>;
-
-  // Utilities
   getUserById: (id: string) => User | null;
   getRoleById: (id: string) => Role | null;
   canUserPerformAction: (userId: string, permissionId: string) => boolean;
   filteredUsers: User[];
 }
 
-// Default Roles
-const DEFAULT_ROLES: Role[] = [
-  {
-    id: 'role-admin-001',
-    name: 'Administrateur',
-    level: 5,
-    description: 'Accès complet à toutes les fonctionnalités',
-    permissions: [
-      'user:create', 'user:read', 'user:update', 'user:delete', 'user:manage',
-      'role:create', 'role:read', 'role:update', 'role:delete', 'role:manage',
-      'permission:read',
-      'content:create', 'content:read', 'content:update', 'content:delete', 'content:manage',
-      'communication:create', 'communication:read', 'communication:update', 'communication:delete',
-      'team:create', 'team:read', 'team:update', 'team:delete', 'team:manage',
-      'worship:create', 'worship:read', 'worship:update', 'worship:delete', 'worship:manage',
-      'system:configure'
-    ]
-  },
-  {
-    id: 'role-editor-002',
-    name: 'Éditeur de contenu',
-    level: 4,
-    description: 'Gère le contenu et peut modifier les publications',
-    permissions: [
-      'content:create', 'content:read', 'content:update', 'content:delete',
-      'communication:create', 'communication:read', 'communication:update',
-      'team:read',
-      'worship:create', 'worship:read', 'worship:update',
-      'user:read'
-    ]
-  },
-  {
-    id: 'role-leader-003',
-    name: 'Responsable d\'équipe',
-    level: 3,
-    description: 'Gère les membres d\'équipe et supervise les activités',
-    permissions: [
-      'team:create', 'team:read', 'team:update',
-      'worship:read',
-      'communication:create', 'communication:read', 'communication:update',
-      'user:read'
-    ]
-  },
-  {
-    id: 'role-viewer-004',
-    name: 'Visualiseur',
-    level: 2,
-    description: 'Peut uniquement consulter les contenus disponibles',
-    permissions: [
-      'content:read',
-      'communication:read',
-      'worship:read',
-      'user:read'
-    ]
-  },
-  {
-    id: 'role-guest-005',
-    name: 'Invité',
-    level: 1,
-    description: 'Accès limité aux fonctionnalités de base',
-    permissions: [
-      'content:read',
-      'worship:read',
-      'user:read'
-    ]
-  }
-];
-
-// Default Permissions
-const DEFAULT_PERMISSIONS: Permission[] = [
-  // User Management Permissions
-  { id: 'permission-user-create', name: 'Créer un utilisateur', description: 'Peut créer de nouveaux comptes utilisateur', category: 'users', resource: 'user', action: 'create' },
-  { id: 'permission-user-read', name: 'Lire les utilisateurs', description: 'Peut consulter les informations des utilisateurs', category: 'users', resource: 'user', action: 'read' },
-  { id: 'permission-user-update', name: 'Mettre à jour un utilisateur', description: 'Peut modifier les informations des utilisateurs', category: 'users', resource: 'user', action: 'update' },
-  { id: 'permission-user-delete', name: 'Supprimer un utilisateur', description: 'Peut supprimer des comptes utilisateur', category: 'users', resource: 'user', action: 'delete' },
-  { id: 'permission-user-manage', name: 'Gérer les utilisateurs', description: 'Accès complet à la gestion des utilisateurs', category: 'users', resource: 'user', action: 'manage' },
-
-  // Role Management Permissions
-  { id: 'permission-role-create', name: 'Créer un rôle', description: 'Peut créer de nouveaux rôles', category: 'system', resource: 'role', action: 'create' },
-  { id: 'permission-role-read', name: 'Lire les rôles', description: 'Peut consulter les informations des rôles', category: 'system', resource: 'role', action: 'read' },
-  { id: 'permission-role-update', name: 'Mettre à jour un rôle', description: 'Peut modifier les informations des rôles', category: 'system', resource: 'role', action: 'update' },
-  { id: 'permission-role-delete', name: 'Supprimer un rôle', description: 'Peut supprimer des rôles', category: 'system', resource: 'role', action: 'delete' },
-  { id: 'permission-role-manage', name: 'Gérer les rôles', description: 'Accès complet à la gestion des rôles', category: 'system', resource: 'role', action: 'manage' },
-
-  // Content Management Permissions
-  { id: 'permission-content-create', name: 'Créer du contenu', description: 'Peut ajouter du nouveau contenu', category: 'content', resource: 'content', action: 'create' },
-  { id: 'permission-content-read', name: 'Lire le contenu', description: 'Peut consulter le contenu existant', category: 'content', resource: 'content', action: 'read' },
-  { id: 'permission-content-update', name: 'Mettre à jour le contenu', description: 'Peut modifier le contenu existant', category: 'content', resource: 'content', action: 'update' },
-  { id: 'permission-content-delete', name: 'Supprimer le contenu', description: 'Peut supprimer du contenu', category: 'content', resource: 'content', action: 'delete' },
-  { id: 'permission-content-manage', name: 'Gérer le contenu', description: 'Accès complet à la gestion du contenu', category: 'content', resource: 'content', action: 'manage' },
-
-  // Communication Management Permissions
-  { id: 'permission-communication-create', name: 'Créer des communications', description: 'Peut ajouter des notifications et communications', category: 'communications', resource: 'communication', action: 'create' },
-  { id: 'permission-communication-read', name: 'Lire les communications', description: 'Peut consulter les communications', category: 'communications', resource: 'communication', action: 'read' },
-  { id: 'permission-communication-update', name: 'Mettre à jour les communications', description: 'Peut modifier les communications existantes', category: 'communications', resource: 'communication', action: 'update' },
-  { id: 'permission-communication-delete', name: 'Supprimer les communications', description: 'Peut supprimer des communications', category: 'communications', resource: 'communication', action: 'delete' },
-
-  // Team Management Permissions
-  { id: 'permission-team-create', name: 'Créer une équipe', description: 'Peut ajouter de nouveaux membres d\'équipe', category: 'team', resource: 'team', action: 'create' },
-  { id: 'permission-team-read', name: 'Lire l\'équipe', description: 'Peut consulter les informations de l\'équipe', category: 'team', resource: 'team', action: 'read' },
-  { id: 'permission-team-update', name: 'Mettre à jour l\'équipe', description: 'Peut modifier les informations de l\'équipe', category: 'team', resource: 'team', action: 'update' },
-  { id: 'permission-team-delete', name: 'Supprimer un membre', description: 'Peut supprimer des membres d\'équipe', category: 'team', resource: 'team', action: 'delete' },
-  { id: 'permission-team-manage', name: 'Gérer l\'équipe', description: 'Accès complet à la gestion de l\'équipe', category: 'team', resource: 'team', action: 'manage' },
-
-  // Worship Management Permissions
-  { id: 'permission-worship-create', name: 'Créer un culte', description: 'Peut planifier de nouveaux cultes', category: 'worship', resource: 'worship', action: 'create' },
-  { id: 'permission-worship-read', name: 'Lire le culte', description: 'Peut consulter les programmes de culte', category: 'worship', resource: 'worship', action: 'read' },
-  { id: 'permission-worship-update', name: 'Mettre à jour le culte', description: 'Peut modifier les programmes de culte', category: 'worship', resource: 'worship', action: 'update' },
-  { id: 'permission-worship-delete', name: 'Supprimer un culte', description: 'Peut annuler des programmes de culte', category: 'worship', resource: 'worship', action: 'delete' },
-  { id: 'permission-worship-manage', name: 'Gérer le culte', description: 'Accès complet à la gestion des cultes', category: 'worship', resource: 'worship', action: 'manage' },
-
-  // System Configuration Permissions
-  { id: 'permission-system-configure', name: 'Configurer le système', description: 'Peut modifier les paramètres du système', category: 'system', resource: 'system', action: 'configure' }
-];
-
 export function useUserManagement(): UserManagementState & UserManagementActions {
   const [state, setState] = useState<UserManagementState>({
     users: [],
-    roles: DEFAULT_ROLES,
-    permissions: DEFAULT_PERMISSIONS,
+    roles: [],
+    permissions: [],
     isLoading: false,
     error: null,
     selectedUser: null,
@@ -254,20 +131,53 @@ export function useUserManagement(): UserManagementState & UserManagementActions
     }
   }, []);
 
+  const loadRoles = useCallback(async () => {
+    try {
+      const apiRoles = await rolesApi.getAll();
+      const roles: Role[] = apiRoles.map(r => ({
+        id: r.id,
+        name: r.name,
+        level: r.level,
+        description: r.description,
+        permissions: r.permissions,
+      }));
+      setState(prev => ({ ...prev, roles }));
+    } catch (error) {
+      console.error('Erreur lors du chargement des rôles:', error);
+    }
+  }, []);
+
+  const loadPermissions = useCallback(async () => {
+    try {
+      const apiPerms = await permissionsApi.getAll();
+      const permissions: Permission[] = apiPerms.map(p => ({
+        id: p.id,
+        name: p.name,
+        description: p.description,
+        category: p.category as Permission['category'],
+        resource: p.id.split('-')[1] || 'general',
+        action: p.id.split('-')[2] as Permission['action'] || 'read',
+      }));
+      setState(prev => ({ ...prev, permissions }));
+    } catch (error) {
+      console.error('Erreur lors du chargement des permissions:', error);
+    }
+  }, []);
+
   const loadAllData = useCallback(async () => {
     setState(prev => ({ ...prev, isLoading: true, error: null }));
     try {
-      await loadUsers();
+      await Promise.all([loadUsers(), loadRoles(), loadPermissions()]);
       setState(prev => ({ ...prev, isUserModalOpen: false }));
     } catch (error) {
-      setState(prev => ({ 
-        ...prev, 
-        error: error instanceof Error ? error.message : 'Erreur lors du chargement des données' 
+      setState(prev => ({
+        ...prev,
+        error: error instanceof Error ? error.message : 'Erreur lors du chargement des données'
       }));
     } finally {
       setState(prev => ({ ...prev, isLoading: false }));
     }
-  }, [loadUsers]);
+  }, [loadUsers, loadRoles, loadPermissions]);
 
   useEffect(() => {
     loadAllData();
@@ -275,29 +185,13 @@ export function useUserManagement(): UserManagementState & UserManagementActions
 
   const createUser = useCallback(async (userData: Omit<User, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      if (state.isLoading) {
-        throw new Error('Une operation est déjà en cours');
-      }
-
+      if (state.isLoading) throw new Error('Une operation est déjà en cours');
       setState(prev => ({ ...prev, isLoading: true, error: null }));
-      
       const normalizedEmail = userData.email.toLowerCase();
-      const existingUser = state.users.find(u => u.email === normalizedEmail);
-      if (existingUser) {
-        throw new Error('Un utilisateur avec cet email existe déjà');
-      }
-      
-      const enrichedUserData = {
+      await simpleUserManagement.createUser({
         ...userData,
         email: normalizedEmail,
-        roles: [userData.role],
-        permissions: state.permissions.filter(permission => {
-          const role = state.roles.find(r => r.name.toLowerCase().includes(userData.role.toLowerCase()));
-          return role?.permissions.includes(permission.id);
-        })
-      };
-      
-      await simpleUserManagement.createUser(enrichedUserData as any);
+      } as any);
       await loadUsers();
     } catch (error) {
       console.error('Erreur lors de la création de l\'utilisateur:', error);
@@ -306,26 +200,12 @@ export function useUserManagement(): UserManagementState & UserManagementActions
     } finally {
       setState(prev => ({ ...prev, isLoading: false }));
     }
-  }, [state.isLoading, state.users, state.permissions, state.roles, loadUsers]);
+  }, [state.isLoading, loadUsers]);
 
   const updateUser = useCallback(async (id: string, userData: Partial<User>) => {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
-      
-      const userToUpdate = state.users.find(u => u.id === id);
-      if (!userToUpdate) {
-        throw new Error('Utilisateur non trouvé');
-      }
-      
-      const updatedUserData: Partial<User> = {
-        ...userData,
-        updated_at: new Date().toISOString(),
-        email: userData.email ? userData.email.toLowerCase() : userToUpdate.email,
-        roles: userData.roles || userToUpdate.roles,
-        permissions: userData.permissions || userToUpdate.permissions,
-      };
-      
-      await simpleUserManagement.updateUser(id, updatedUserData as any);
+      await simpleUserManagement.updateUser(id, userData as any);
       await loadUsers();
     } catch (error) {
       console.error('Erreur lors de la mise à jour de l\'utilisateur:', error);
@@ -334,27 +214,17 @@ export function useUserManagement(): UserManagementState & UserManagementActions
     } finally {
       setState(prev => ({ ...prev, isLoading: false }));
     }
-  }, [state.isLoading, state.users, loadUsers]);
+  }, [loadUsers]);
 
   const deleteUser = useCallback(async (id: string) => {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
-      
       const userToDelete = state.users.find(u => u.id === id);
-      if (!userToDelete) {
-        throw new Error('Utilisateur non trouvé');
-      }
-      
-      if (userToDelete.email === 'admin@church.com') {
-        throw new Error('Impossible de supprimer l\'administrateur principal');
-      }
-      
+      if (!userToDelete) throw new Error('Utilisateur non trouvé');
+      if (userToDelete.email === 'admin@church.com') throw new Error('Impossible de supprimer l\'administrateur principal');
       await simpleUserManagement.deleteUser(id);
       await loadUsers();
-      
-      if (state.selectedUser?.id === id) {
-        setState(prev => ({ ...prev, selectedUser: null }));
-      }
+      if (state.selectedUser?.id === id) setState(prev => ({ ...prev, selectedUser: null }));
     } catch (error) {
       console.error('Erreur lors de la suppression de l\'utilisateur:', error);
       Alert.alert('Erreur', error instanceof Error ? error.message : 'Impossible de supprimer l\'utilisateur');
@@ -364,33 +234,12 @@ export function useUserManagement(): UserManagementState & UserManagementActions
     }
   }, [state.isLoading, state.users, loadUsers, state.selectedUser]);
 
-  const loadRoles = useCallback(async () => {
-    try {
-      setState(prev => ({ ...prev, isLoading: true }));
-      const roles = DEFAULT_ROLES;
-      setState(prev => ({ ...prev, roles }));
-    } finally {
-      setState(prev => ({ ...prev, isLoading: false }));
-    }
-  }, []);
-
   const createRole = useCallback(async (roleData: Omit<Role, 'id'>) => {
     try {
-      if (state.isLoading) {
-        throw new Error('Une operation est déjà en cours');
-      }
-
+      if (state.isLoading) throw new Error('Une operation est déjà en cours');
       setState(prev => ({ ...prev, isLoading: true, error: null }));
-      
-      const newRole: Role = {
-        ...roleData,
-        id: `role-${Date.now()}`,
-      };
-      
-      setState(prev => ({
-        ...prev,
-        roles: [...prev.roles, newRole],
-      }));
+      await rolesApi.create(roleData);
+      await loadRoles();
     } catch (error) {
       console.error('Erreur lors de la création du rôle:', error);
       Alert.alert('Erreur', error instanceof Error ? error.message : 'Impossible de créer le rôle');
@@ -398,18 +247,13 @@ export function useUserManagement(): UserManagementState & UserManagementActions
     } finally {
       setState(prev => ({ ...prev, isLoading: false }));
     }
-  }, [state.isLoading]);
+  }, [state.isLoading, loadRoles]);
 
   const updateRole = useCallback(async (id: string, roleData: Partial<Role>) => {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
-      
-      setState(prev => ({
-        ...prev,
-        roles: prev.roles.map(role =>
-          role.id === id ? { ...role, ...roleData } : role
-        ),
-      }));
+      await rolesApi.update(id, roleData);
+      await loadRoles();
     } catch (error) {
       console.error('Erreur lors de la mise à jour du rôle:', error);
       Alert.alert('Erreur', error instanceof Error ? error.message : 'Impossible de mettre à jour le rôle');
@@ -417,40 +261,13 @@ export function useUserManagement(): UserManagementState & UserManagementActions
     } finally {
       setState(prev => ({ ...prev, isLoading: false }));
     }
-  }, []);
+  }, [loadRoles]);
 
   const deleteRole = useCallback(async (id: string) => {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
-      
-      if (id === DEFAULT_ROLES[0].id) {
-        throw new Error('Impossible de supprimer le rôle Administrateur par défaut');
-      }
-      
-      const confirmDelete = await new Promise<boolean>((resolve) => {
-        Alert.alert(
-          'Confirmer la suppression',
-          'Êtes-vous sûr de vouloir supprimer ce rôle ? Les utilisateurs ayant ce rôle perdront leurs permissions.',
-          [
-            { text: 'Annuler', style: 'cancel', onPress: () => resolve(false) },
-            { text: 'Supprimer', style: 'destructive', onPress: () => resolve(true) },
-          ]
-        );
-      });
-      
-      if (!confirmDelete) {
-        return;
-      }
-      
-      setState(prev => ({
-        ...prev,
-        roles: prev.roles.filter(role => role.id !== id),
-        users: prev.users.map(user => ({
-          ...user,
-          roles: user.roles.filter(roleId => roleId !== id),
-          permissions: user.permissions.filter(permission => !prev.roles.find(r => r.id === id)?.permissions.includes(permission.id)),
-        }))
-      }));
+      await rolesApi.delete(id);
+      await loadRoles();
     } catch (error) {
       console.error('Erreur lors de la suppression du rôle:', error);
       Alert.alert('Erreur', error instanceof Error ? error.message : 'Impossible de supprimer le rôle');
@@ -458,36 +275,20 @@ export function useUserManagement(): UserManagementState & UserManagementActions
     } finally {
       setState(prev => ({ ...prev, isLoading: false }));
     }
-  }, []);
+  }, [loadRoles]);
 
   const assignRoleToUser = useCallback(async (userId: string, roleId: string) => {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
-      
-      const user = state.users.find(u => u.id === userId);
       const role = state.roles.find(r => r.id === roleId);
-      
-      if (!user || !role) {
-        throw new Error('Utilisateur ou rôle non trouvé');
-      }
-      
-      const permissionIdsToAdd = role.permissions.filter(
-        permissionId => !user.permissions.some(p => p.id === permissionId)
-      );
-      const permissionObjectsToAdd = state.permissions.filter(p => permissionIdsToAdd.includes(p.id));
-      
-      const updatedUser: User = {
-        ...user,
-        roles: [...user.roles, roleId],
-        permissions: [...user.permissions, ...permissionObjectsToAdd],
-        updated_at: new Date().toISOString(),
-      };
-      
-      setState(prev => ({
-        ...prev,
-        users: prev.users.map(u => u.id === userId ? updatedUser : u),
-        selectedUser: prev.selectedUser?.id === userId ? updatedUser : prev.selectedUser,
-      }));
+      if (!role) throw new Error('Rôle non trouvé');
+      const currentUser = state.users.find(u => u.id === userId);
+      if (!currentUser) throw new Error('Utilisateur non trouvé');
+      const mergedPerms = { ...currentUser.permissions.reduce((acc, p) => ({ ...acc, [p.id]: true }), {}) };
+      role.permissions.forEach(pid => { mergedPerms[pid] = true; });
+      const allPerms = Object.keys(mergedPerms).reduce((acc, key) => ({ ...acc, [key]: true }), {} as Record<string, boolean>);
+      await usersApi.updatePermissions(userId, allPerms);
+      await loadUsers();
     } catch (error) {
       console.error('Erreur lors de l\'affectation du rôle:', error);
       Alert.alert('Erreur', error instanceof Error ? error.message : 'Impossible d\'attribuer le rôle');
@@ -495,33 +296,20 @@ export function useUserManagement(): UserManagementState & UserManagementActions
     } finally {
       setState(prev => ({ ...prev, isLoading: false }));
     }
-  }, [state.isLoading, state.users, state.roles]);
+  }, [state.isLoading, state.users, state.roles, loadUsers]);
 
   const removeRoleFromUser = useCallback(async (userId: string, roleId: string) => {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
-      
-      const user = state.users.find(u => u.id === userId);
       const role = state.roles.find(r => r.id === roleId);
-      
-      if (!user || !role) {
-        throw new Error('Utilisateur ou rôle non trouvé');
-      }
-      
-      const permissionsToRemove = role.permissions;
-      
-      const updatedUser: User = {
-        ...user,
-        roles: user.roles.filter(r => r !== roleId),
-        permissions: user.permissions.filter(p => !permissionsToRemove.includes(p.id)),
-        updated_at: new Date().toISOString(),
-      };
-      
-      setState(prev => ({
-        ...prev,
-        users: prev.users.map(u => u.id === userId ? updatedUser : u),
-        selectedUser: prev.selectedUser?.id === userId ? updatedUser : prev.selectedUser,
-      }));
+      if (!role) throw new Error('Rôle non trouvé');
+      const currentUser = state.users.find(u => u.id === userId);
+      if (!currentUser) throw new Error('Utilisateur non trouvé');
+      const permSet = new Set(role.permissions);
+      const remainingPerms = currentUser.permissions.filter(p => !permSet.has(p.id));
+      const allPerms = remainingPerms.reduce((acc, p) => ({ ...acc, [p.id]: true }), {} as Record<string, boolean>);
+      await usersApi.updatePermissions(userId, allPerms);
+      await loadUsers();
     } catch (error) {
       console.error('Erreur lors de la suppression du rôle:', error);
       Alert.alert('Erreur', error instanceof Error ? error.message : 'Impossible de retirer le rôle');
@@ -529,26 +317,16 @@ export function useUserManagement(): UserManagementState & UserManagementActions
     } finally {
       setState(prev => ({ ...prev, isLoading: false }));
     }
-  }, []);
+  }, [state.isLoading, state.users, state.roles, loadUsers]);
 
   const assignPermissionToRole = useCallback(async (roleId: string, permissionId: string) => {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
-      
-      setState(prev => ({
-        ...prev,
-        roles: prev.roles.map(role =>
-          role.id === roleId
-            ? { ...role, permissions: [...role.permissions, permissionId] }
-            : role
-        ),
-        users: prev.users.map(user => ({
-          ...user,
-          permissions: user.roles.some(r => r === roleId)
-            ? [...user.permissions, ...state.permissions.filter(p => p.id === permissionId && !user.permissions.some(up => up.id === p.id))]
-            : user.permissions,
-        }))
-      }));
+      const role = state.roles.find(r => r.id === roleId);
+      if (!role) throw new Error('Rôle non trouvé');
+      const newPerms = [...new Set([...role.permissions, permissionId])];
+      await rolesApi.update(roleId, { permissions: newPerms });
+      await loadRoles();
     } catch (error) {
       console.error('Erreur lors de l\'attribution de la permission:', error);
       Alert.alert('Erreur', error instanceof Error ? error.message : 'Impossible d\'attribuer la permission');
@@ -556,24 +334,16 @@ export function useUserManagement(): UserManagementState & UserManagementActions
     } finally {
       setState(prev => ({ ...prev, isLoading: false }));
     }
-  }, [state.isLoading, state.users, state.permissions]);
+  }, [state.isLoading, state.roles, loadRoles]);
 
   const removePermissionFromRole = useCallback(async (roleId: string, permissionId: string) => {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
-      
-      setState(prev => ({
-        ...prev,
-        roles: prev.roles.map(role =>
-          role.id === roleId
-            ? { ...role, permissions: role.permissions.filter(id => id !== permissionId) }
-            : role
-        ),
-        users: prev.users.map(user => ({
-          ...user,
-          permissions: user.permissions.filter(p => p.id !== permissionId),
-        }))
-      }));
+      const role = state.roles.find(r => r.id === roleId);
+      if (!role) throw new Error('Rôle non trouvé');
+      const newPerms = role.permissions.filter(id => id !== permissionId);
+      await rolesApi.update(roleId, { permissions: newPerms });
+      await loadRoles();
     } catch (error) {
       console.error('Erreur lors de la suppression de la permission:', error);
       Alert.alert('Erreur', error instanceof Error ? error.message : 'Impossible de supprimer la permission');
@@ -581,7 +351,7 @@ export function useUserManagement(): UserManagementState & UserManagementActions
     } finally {
       setState(prev => ({ ...prev, isLoading: false }));
     }
-  }, []);
+  }, [state.isLoading, state.roles, loadRoles]);
 
   const setFilterRole = useCallback((role: UserRole | 'all') => {
     setState(prev => ({ ...prev, filterRole: role }));
@@ -643,7 +413,7 @@ export function useUserManagement(): UserManagementState & UserManagementActions
   const filteredUsers = useMemo(() => state.users.filter(user => {
     const roleMatch = state.filterRole === 'all' || user.roles.includes(state.filterRole);
     const statusMatch = state.filterStatus === 'all' || user.status === state.filterStatus;
-    const searchMatch = state.searchQuery === '' || 
+    const searchMatch = state.searchQuery === '' ||
       user.name.toLowerCase().includes(state.searchQuery.toLowerCase()) ||
       user.email.toLowerCase().includes(state.searchQuery.toLowerCase()) ||
       user.role.toLowerCase().includes(state.searchQuery.toLowerCase());

@@ -245,14 +245,14 @@ export default function SongsScreen() {
                 <View style={[styles.emptyState, { backgroundColor, borderColor }]}>
                   <Ionicons name="musical-notes-outline" size={48} color={secondaryColor} />
                   <ThemedText style={[styles.emptyTitle, { color: textColor }]}>
-                    {t('songs.noResults')}
+                    {songs.length === 0 ? t('songs.noSongs') : t('songs.noResults')}
                   </ThemedText>
                   <ThemedText style={[styles.emptyText, { color: secondaryColor }]}>
-                    {canManageSongs && !searchQuery && selectedCategory === allLabel
+                    {canManageSongs && songs.length === 0
                       ? t('songs.add')
                       : t('songs.search')}
                   </ThemedText>
-                  {canManageSongs && !searchQuery && selectedCategory === allLabel && (
+                  {canManageSongs && songs.length === 0 && (
                     <TouchableOpacity 
                       style={[styles.emptyButton, { backgroundColor: primaryColor }]}
                       onPress={handleAddSong}

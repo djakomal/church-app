@@ -147,7 +147,7 @@ export function WorshipCard({
         )}
       </View>
 
-      {status === 'draft' && hasPermission('canValidateWorship') && (
+      {(status === 'draft' || status === undefined) && (onAssignMusicians || onValidate || onReject) && (
         <View style={[styles.workflowActions, { borderTopColor: borderColor }]}>
           {onAssignMusicians && (
             <TouchableOpacity

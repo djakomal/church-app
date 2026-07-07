@@ -18,12 +18,12 @@ router.get('/:id', (req, res) => {
 
 router.post('/', (req, res) => {
   const db = getDb();
-  const { title, artist, key, tempo, duration, category, notes, lyrics } = req.body;
+  const { title, artist, key, tempo, duration, category, notes, lyrics, audio_url } = req.body;
   if (!title) return res.status(400).json({ error: 'Le titre est requis' });
-  const result = db.prepare(`INSERT INTO songs (title, artist, key, tempo, duration, category, notes, lyrics)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(
+  const result = db.prepare(`INSERT INTO songs (title, artist, key, tempo, duration, category, notes, lyrics, audio_url)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
     title, artist || '', key || '', tempo || '', duration || '',
-    category || '', notes || '', lyrics || ''
+    category || '', notes || '', lyrics || '', audio_url || ''
   );
   const song = db.prepare('SELECT * FROM songs WHERE id = ?').get(result.lastInsertRowid);
   res.status(201).json(song);
@@ -33,8 +33,8 @@ router.put('/:id', (req, res) => {
   const db = getDb();
   const existing = db.prepare('SELECT * FROM songs WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Chant non trouvé' });
-  const { title, artist, key, tempo, duration, category, notes, lyrics } = req.body;
-  db.prepare(`UPDATE songs SET title=?, artist=?, key=?, tempo=?, duration=?, category=?, notes=?, lyrics=?,
+  const { title, artist, key, tempo, duration, category, notes, lyrics, audio_url } = req.body;
+  db.prepare(`UPDATE songs SET title=?, artist=?, key=?, tempo=?, duration=?, category=?, notes=?, lyrics=?, audio_url=?,
     updated_at=datetime('now') WHERE id=?`).run(
     title || existing.title, artist !== undefined ? artist : existing.artist,
     key !== undefined ? key : existing.key,
@@ -43,6 +43,7 @@ router.put('/:id', (req, res) => {
     category !== undefined ? category : existing.category,
     notes !== undefined ? notes : existing.notes,
     lyrics !== undefined ? lyrics : existing.lyrics,
+    audio_url !== undefined ? audio_url : existing.audio_url,
     req.params.id
   );
   const song = db.prepare('SELECT * FROM songs WHERE id = ?').get(req.params.id);

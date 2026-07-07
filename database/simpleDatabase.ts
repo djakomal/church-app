@@ -16,6 +16,7 @@ export interface Song {
   category: string;
   notes: string;
   lyrics: string;
+  audio_url?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -79,6 +80,7 @@ export interface Notification {
   message: string;
   type: 'info' | 'urgent' | 'reminder' | 'success' | 'warning';
   targetAudience: 'all' | 'musicians' | 'leaders' | 'active_members' | 'chantres' | 'instrumentistes';
+  userId: string;
   isScheduled: boolean;
   scheduledDate?: string;
   sent_at: string;
@@ -239,9 +241,9 @@ class SimpleDatabaseManager {
   }
 
   // Notifications
-  async getAllNotifications(): Promise<Notification[]> {
+  async getAllNotifications(userId?: string): Promise<Notification[]> {
     try {
-      return await notificationsApi.getAll();
+      return await notificationsApi.getAll(userId);
     } catch (error) {
       console.error('Erreur lors du chargement des notifications:', error);
       return [];

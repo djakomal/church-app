@@ -1,36 +1,54 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from './ThemedText';
 import { DiscussionItem } from './DiscussionItem';
 import { useThemeColor } from '@/hooks/useThemeColor';
+import { discussionsApi, Discussion } from '@/api/discussions';
 
 interface DiscussionsPanelProps {
   selectedDiscussion: string;
   onDiscussionSelect: (discussion: string) => void;
 }
 
+interface DiscussionGroup {
+  category: string;
+  items: Discussion[];
+}
+
 export function DiscussionsPanel({ selectedDiscussion, onDiscussionSelect }: DiscussionsPanelProps) {
+  const [groups, setGroups] = useState<DiscussionGroup[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
   const primaryColor = useThemeColor({}, 'primary');
 
-  const discussions = {
-    'Messages Directs': [
-      { id: 'discussion-generale', title: 'Discussion Générale', icon: 'document-text', time: '', hasNewMessages: true, hasUrgentAlert: true },
-      { id: 'equipe-louange', title: 'Équipe Louange', icon: 'document-text', time: '2h', hasNewMessages: false, hasUrgentAlert: false },
-      { id: 'leader-louange', title: 'Leader Louange', icon: 'document-text', time: 'Hier', hasNewMessages: false, hasUrgentAlert: false },
-    ],
-    'Alertes Urgentes': [
-      { id: 'alertes-eglise', title: 'Alertes Église', icon: 'warning', time: '10 min', hasNewMessages: true, hasUrgentAlert: true },
-    ],
-    'Rappels de Service': [
-      { id: 'rappel-prochain-culte', title: 'Rappel Prochain Culte', icon: 'notifications', time: 'Aujourd\'hui', hasNewMessages: false, hasUrgentAlert: false },
-    ],
-    'Confirmations d\'Présence': [
-      { id: 'confirmations-equipe', title: 'Confirmations Équipe', icon: 'checkmark-circle', time: 'Hier', hasNewMessages: false, hasUrgentAlert: false },
-    ],
-  };
+  const loadDiscussions = useCallback(async () => {
+    try {
+      setLoading(true);
+      const all = await discussionsApi.getAll();
+      const grouped: Record<string, Discussion[]> = {};
+      const categoryOrder = ['Messages Directs', 'Alertes Urgentes', 'Rappels de Service', 'Confirmations'];
+      for (const d of all) {
+        const cat = d.category || 'Messages Directs';
+        if (!grouped[cat]) grouped[cat] = [];
+        grouped[cat].push(d);
+      }
+      const sorted = categoryOrder
+        .filter(c => grouped[c])
+        .map(c => ({ category: c, items: grouped[c] }));
+      setGroups(sorted);
+    } catch (error) {
+      console.error('Erreur chargement discussions:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadDiscussions();
+  }, [loadDiscussions]);
 
   return (
     <View style={[styles.container, { backgroundColor }]}>
@@ -44,18 +62,19 @@ export function DiscussionsPanel({ selectedDiscussion, onDiscussionSelect }: Dis
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {Object.entries(discussions).map(([sectionTitle, sectionDiscussions]) => (
-          <View key={sectionTitle} style={styles.section}>
+        {loading ? (
+          <ThemedText style={[styles.loadingText, { color: textColor }]}>Chargement...</ThemedText>
+        ) : groups.map(group => (
+          <View key={group.category} style={styles.section}>
             <ThemedText style={[styles.sectionTitle, { color: textColor }]}>
-              {sectionTitle}
+              {group.category}
             </ThemedText>
-            
-            {sectionDiscussions.map((discussion) => (
+            {group.items.map(discussion => (
               <DiscussionItem
                 key={discussion.id}
                 title={discussion.title}
                 icon={discussion.icon}
-                time={discussion.time}
+                time=""
                 isSelected={selectedDiscussion === discussion.id}
                 hasNewMessages={discussion.hasNewMessages}
                 hasUrgentAlert={discussion.hasUrgentAlert}
@@ -108,5 +127,10 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  loadingText: {
+    textAlign: 'center',
+    marginTop: 20,
+    fontSize: 14,
   },
 });

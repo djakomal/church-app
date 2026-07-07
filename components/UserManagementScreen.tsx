@@ -11,7 +11,7 @@ interface UserManagementScreenProps {
 }
 
 export function UserManagementScreen({ onClose }: UserManagementScreenProps) {
-  const { user, updateUserPermissions } = useAuth();
+  const { user, updateUserRole, updateUserPermissions } = useAuth();
   const userManagement = useUserManagement();
   const { isDark, setThemeMode } = useThemeContext();
   const t = useT();
@@ -283,14 +283,14 @@ export function UserManagementScreen({ onClose }: UserManagementScreenProps) {
 
   const isAdmin = user?.role === 'admin';
 
-  const handleToggleWorship = async (targetUser: any) => {
-    const current = getPerm(targetUser, 'canManageWorship');
+  const handleToggleEditorRole = async (targetUser: any) => {
+    const isEditor = targetUser.role === 'editor';
     try {
-      await updateUserPermissions(targetUser.id, { canManageWorship: !current });
-      Alert.alert(t('success'), current ? t('um.worshipRemoved') : t('um.worshipGranted'));
+      await updateUserRole(targetUser.id, isEditor ? 'viewer' : 'editor');
+      Alert.alert(t('success'), isEditor ? 'Rôle éditeur retiré' : 'Rôle éditeur attribué');
       userManagement.refreshData();
     } catch (error) {
-      Alert.alert(t('error'), t('um.worshipToggleError'));
+      Alert.alert(t('error'), 'Erreur lors du changement de rôle');
     }
   };
 
@@ -586,12 +586,12 @@ export function UserManagementScreen({ onClose }: UserManagementScreenProps) {
             {isAdmin && item.role !== 'admin' && (
               <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10, gap: 10 }}>
                 <TouchableOpacity
-                  style={[styles.worshipButton, getPerm(item, 'canManageWorship') && styles.worshipButtonRemove]}
-                  onPress={() => handleToggleWorship(item)}
+                  style={[styles.worshipButton, item.role === 'editor' && styles.worshipButtonRemove]}
+                  onPress={() => handleToggleEditorRole(item)}
                 >
-                  <Ionicons name="musical-notes" size={16} color="#ffffff" />
+                  <Ionicons name="shield-checkmark" size={16} color="#ffffff" />
                   <Text style={styles.buttonText}>
-                    {getPerm(item, 'canManageWorship') ? 'Retirer cultes' : 'Autoriser cultes'}
+                    {item.role === 'editor' ? 'Retirer éditeur' : 'Attribuer éditeur'}
                   </Text>
                 </TouchableOpacity>
               </View>

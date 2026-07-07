@@ -1,4 +1,3 @@
-import { EventBus } from '@/utils/EventBus';
 import { useCallback, useEffect, useState } from 'react';
 import { Communication, simpleDatabase, Song, TeamMember, Worship, Musician, Notification, Comment } from '../database/simpleDatabase';
 
@@ -221,8 +220,7 @@ export function useCommunications() {
     try {
       setError(null);
       const newId = await simpleDatabase.createCommunication(communicationData);
-      await loadCommunications(); // Recharger la liste
-      EventBus.emit('communication_created', communicationData);
+      await loadCommunications();
       return newId;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors de la création de la communication');
@@ -269,8 +267,7 @@ export function useWorships() {
     try {
       setError(null);
       const newId = await simpleDatabase.createWorship(worshipData);
-      await loadWorships(); // Recharger la liste
-      EventBus.emit('worship_created', worshipData as any);
+      await loadWorships();
       return newId;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors de la création du culte');
@@ -296,7 +293,6 @@ export function useWorships() {
       setError(null);
       await simpleDatabase.deleteWorship(id);
       await loadWorships();
-      EventBus.emit('worship_deleted', { id });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors de la suppression du culte');
       console.error('Erreur lors de la suppression du culte:', err);
@@ -404,7 +400,7 @@ export function useMusicians() {
 }
 
 // Hook pour gérer les notifications
-export function useNotifications() {
+export function useNotifications(userId?: string) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -413,7 +409,7 @@ export function useNotifications() {
     try {
       setIsLoading(true);
       setError(null);
-      const allNotifications = await simpleDatabase.getAllNotifications();
+      const allNotifications = await simpleDatabase.getAllNotifications(userId);
       setNotifications(allNotifications);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors du chargement des notifications');
@@ -421,14 +417,13 @@ export function useNotifications() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [userId]);
 
   const createNotification = useCallback(async (notificationData: Omit<Notification, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       setError(null);
       const newId = await simpleDatabase.createNotification(notificationData);
-      await loadNotifications(); // Recharger la liste
-      EventBus.emit('notification_created', notificationData);
+      await loadNotifications();
       return newId;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors de la création de la notification');

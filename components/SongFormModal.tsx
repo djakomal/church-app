@@ -23,6 +23,7 @@ interface Song {
   category: string;
   notes: string;
   lyrics: string;
+  audio_url: string;
 }
 
 interface SongFormModalProps {
@@ -45,7 +46,8 @@ export function SongFormModal({ visible, song, onClose, onSave }: SongFormModalP
     duration: '',
     category: 'Louange',
     notes: '',
-    lyrics: ''
+    lyrics: '',
+    audio_url: ''
   });
 
   const [showTempoDropdown, setShowTempoDropdown] = useState(false);
@@ -72,7 +74,8 @@ export function SongFormModal({ visible, song, onClose, onSave }: SongFormModalP
         duration: '',
         category: 'Louange',
         notes: '',
-        lyrics: ''
+        lyrics: '',
+        audio_url: ''
       });
     }
   }, [song, visible]);
@@ -299,6 +302,21 @@ export function SongFormModal({ visible, song, onClose, onSave }: SongFormModalP
               multiline
               numberOfLines={8}
               textAlignVertical="top"
+            />
+          </View>
+
+          <View style={styles.formGroup}>
+            <ThemedText style={[styles.label, { color: textColor }]}>
+              Audio (URL)
+            </ThemedText>
+            <TextInput
+              style={[styles.input, { color: textColor, borderColor }]}
+              value={formData.audio_url}
+              onChangeText={(text) => setFormData({ ...formData, audio_url: text })}
+              placeholder="https://example.com/audio.mp3"
+              placeholderTextColor={placeholderColor}
+              autoCapitalize="none"
+              autoCorrect={false}
             />
           </View>
         </ScrollView>

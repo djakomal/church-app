@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { ThemedText } from './ThemedText';
 import { useT } from '@/context/I18nContext';
+import { SongPickerModal } from './SongPickerModal';
 import { WorshipAssignmentModal } from './WorshipAssignmentModal';
 import { useMusicians } from '@/hooks/useSimpleDatabase';
 
@@ -55,6 +56,7 @@ export function WorshipFormModal({ visible, worship, onClose, onSave }: WorshipF
 
   const { musicians: allMusicians } = useMusicians();
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
+  const [showSongPicker, setShowSongPicker] = useState(false);
 
   const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
@@ -67,17 +69,19 @@ export function WorshipFormModal({ visible, worship, onClose, onSave }: WorshipF
 
   useEffect(() => {
     if (worship) {
+      const songs = Array.isArray(worship.songs) ? worship.songs : [];
+      const assignedMusicians = Array.isArray(worship.assignedMusicians) ? worship.assignedMusicians : [];
       setFormData({
-        title: worship.title,
-        date: worship.date,
-        time: worship.time,
-        location: worship.location,
+        title: worship.title || '',
+        date: worship.date || '',
+        time: worship.time || '',
+        location: worship.location || '',
         theme: worship.theme || '',
         preacher: worship.preacher || '',
         description: worship.description || '',
-        songs: worship.songs || [],
-        musicians: worship.musicians || [],
-        assignedMusicians: worship.assignedMusicians || []
+        songs,
+        musicians: Array.isArray(worship.musicians) ? worship.musicians : [],
+        assignedMusicians,
       });
     } else {
       setFormData({
@@ -258,19 +262,30 @@ export function WorshipFormModal({ visible, worship, onClose, onSave }: WorshipF
                 <ThemedText style={[styles.label, { color: textColor }]}>
                   {t('worshipFormModal.songs')}
                 </ThemedText>
-                <TextInput
-                  style={[styles.textArea, { color: textColor, borderColor }]}
-                  value={formData.songs?.join(', ') || ''}
-                  onChangeText={(text) => setFormData({ 
-                    ...formData, 
-                    songs: text.split(',').map(s => s.trim()).filter(s => s.length > 0)
-                  })}
-                  placeholder={t('worshipFormModal.songsPlaceholder')}
-                  placeholderTextColor={placeholderColor}
-                  multiline
-                  numberOfLines={3}
-                  textAlignVertical="top"
-                />
+                <TouchableOpacity
+                  style={[styles.musicianSelectButton, { borderColor, backgroundColor: borderColor + '20' }]}
+                  onPress={() => setShowSongPicker(true)}
+                >
+                  <Ionicons name="musical-notes" size={20} color={textColor} />
+                  <ThemedText style={[styles.musicianSelectText, { color: textColor }]}>
+                    {(formData.songs || []).length > 0
+                      ? `${(formData.songs || []).length} chant(s) sélectionné(s)`
+                      : t('worshipFormModal.selectSongs')}
+                  </ThemedText>
+                  <Ionicons name="chevron-forward" size={20} color={secondaryColor} />
+                </TouchableOpacity>
+                {(formData.songs || []).length > 0 && (
+                  <View style={styles.selectedMusiciansList}>
+                    {(formData.songs || []).map((title, idx) => (
+                      <View key={idx} style={[styles.selectedMusicianTag, { backgroundColor: primaryColor + '20', borderColor: primaryColor }]}>
+                        <Ionicons name="musical-note" size={12} color={primaryColor} />
+                        <ThemedText style={[styles.selectedMusicianTagText, { color: primaryColor }]}>
+                          {title}
+                        </ThemedText>
+                      </View>
+                    ))}
+                  </View>
+                )}
               </View>
 
               <View style={styles.inputGroup}>
@@ -283,15 +298,15 @@ export function WorshipFormModal({ visible, worship, onClose, onSave }: WorshipF
                 >
                   <Ionicons name="people" size={20} color={textColor} />
                   <ThemedText style={[styles.musicianSelectText, { color: textColor }]}>
-                    {formData.assignedMusicians && formData.assignedMusicians.length > 0
-                      ? `${formData.assignedMusicians.length} musicien(s) sélectionné(s)`
+                    {(formData.assignedMusicians || []).length > 0
+                      ? `${(formData.assignedMusicians || []).length} musicien(s) sélectionné(s)`
                       : t('worshipFormModal.selectMusicians')}
                   </ThemedText>
                   <Ionicons name="chevron-forward" size={20} color={secondaryColor} />
                 </TouchableOpacity>
-                {formData.assignedMusicians && formData.assignedMusicians.length > 0 && (
+                {(formData.assignedMusicians || []).length > 0 && (
                   <View style={styles.selectedMusiciansList}>
-                    {formData.assignedMusicians.map(id => {
+                    {(formData.assignedMusicians || []).map(id => {
                       const musician = allMusicians.find(m => m.id === id);
                       return musician ? (
                         <View key={id} style={[styles.selectedMusicianTag, { backgroundColor: primaryColor + '20', borderColor: primaryColor }]}>
@@ -313,6 +328,16 @@ export function WorshipFormModal({ visible, worship, onClose, onSave }: WorshipF
           </ScrollView>
         </View>
       </Modal>
+
+      <SongPickerModal
+        visible={showSongPicker}
+        selectedTitles={formData.songs || []}
+        onClose={() => setShowSongPicker(false)}
+        onSave={(titles, ids) => {
+          setFormData(prev => ({ ...prev, songs: titles }));
+          setShowSongPicker(false);
+        }}
+      />
 
       <WorshipAssignmentModal
         visible={showAssignmentModal}

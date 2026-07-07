@@ -16,6 +16,7 @@ function getDb() {
     db.pragma('journal_mode = WAL');
     db.pragma('foreign_keys = ON');
     initSchema();
+    migrate();
     seedDefaults();
   }
   return db;
@@ -33,6 +34,7 @@ function initSchema() {
       category TEXT DEFAULT '',
       notes TEXT DEFAULT '',
       lyrics TEXT DEFAULT '',
+      audio_url TEXT DEFAULT '',
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now'))
     );
@@ -86,6 +88,7 @@ function initSchema() {
       message TEXT NOT NULL,
       type TEXT DEFAULT 'info',
       targetAudience TEXT DEFAULT 'all',
+      userId TEXT DEFAULT '',
       isScheduled INTEGER DEFAULT 0,
       scheduledDate TEXT DEFAULT '',
       sent_at TEXT DEFAULT (datetime('now')),
@@ -138,7 +141,84 @@ function initSchema() {
       PRIMARY KEY (user_id, permission),
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS roles (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      level INTEGER DEFAULT 0,
+      description TEXT DEFAULT '',
+      permissions TEXT DEFAULT '[]',
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS permissions (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      category TEXT DEFAULT 'general',
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      discussionId TEXT NOT NULL,
+      message TEXT NOT NULL,
+      senderName TEXT DEFAULT '',
+      userId TEXT DEFAULT '',
+      isOwnMessage INTEGER DEFAULT 1,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS discussions (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      category TEXT DEFAULT 'general',
+      icon TEXT DEFAULT 'chatbubble',
+      hasNewMessages INTEGER DEFAULT 0,
+      hasUrgentAlert INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS attendance (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      worshipId INTEGER NOT NULL,
+      userId TEXT NOT NULL,
+      userName TEXT DEFAULT '',
+      confirmed INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (worshipId) REFERENCES worships(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS user_settings (
+      userId TEXT PRIMARY KEY,
+      journeyStep INTEGER DEFAULT 0,
+      progress REAL DEFAULT 0,
+      visitedScreens TEXT DEFAULT '[]',
+      featureAccess TEXT DEFAULT '{}',
+      accessibilityEnabled INTEGER DEFAULT 0,
+      fontSize INTEGER DEFAULT 16,
+      theme TEXT DEFAULT 'system',
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS features (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      requiredRole TEXT DEFAULT 'viewer',
+      isEnabled INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
   `);
+}
+
+function migrate() {
+  // Add userId column to notifications if missing
+  const cols = db.prepare("PRAGMA table_info('notifications')").all();
+  if (!cols.find(c => c.name === 'userId')) {
+    db.exec("ALTER TABLE notifications ADD COLUMN userId TEXT DEFAULT ''");
+  }
 }
 
 function seedDefaults() {
@@ -168,6 +248,79 @@ function seedDefaults() {
     );
   }
 
+  if (db.prepare('SELECT COUNT(*) as c FROM features').get().c === 0) {
+    const features = [
+      ['advanced-analytics', 'Analytique Avancée', 'Rapports de comportement utilisateur détaillés', 'leader', 0],
+      ['automated-reminders', 'Rappels Automatisés', 'Notifications et rappels automatiques', 'editor', 1],
+      ['role-management', 'Gestion des Rôles', 'Configuration avancée des rôles et permissions', 'admin', 1],
+      ['data-export', 'Export de Données', 'Export des données vers CSV/PDF', 'editor', 1],
+      ['multi-language', 'Support Multilingue', 'Interface utilisateur multilingue', 'editor', 1],
+    ];
+    const stmt = db.prepare('INSERT OR IGNORE INTO features (id, name, description, requiredRole, isEnabled) VALUES (?, ?, ?, ?, ?)');
+    for (const f of features) stmt.run(...f);
+  }
+
+  if (db.prepare('SELECT COUNT(*) as c FROM permissions').get().c === 0) {
+    const perms = [
+      ['permission-user-create', 'Créer un utilisateur', 'Permet de créer de nouveaux utilisateurs', 'users'],
+      ['permission-user-read', 'Lire les utilisateurs', 'Permet de voir la liste des utilisateurs', 'users'],
+      ['permission-user-update', 'Modifier un utilisateur', 'Permet de modifier les informations des utilisateurs', 'users'],
+      ['permission-user-delete', 'Supprimer un utilisateur', 'Permet de supprimer des utilisateurs', 'users'],
+      ['permission-user-manage', 'Gérer les utilisateurs', 'Accès complet à la gestion des utilisateurs', 'users'],
+      ['permission-role-create', 'Créer un rôle', 'Permet de créer de nouveaux rôles', 'roles'],
+      ['permission-role-read', 'Lire les rôles', 'Permet de voir la liste des rôles', 'roles'],
+      ['permission-role-update', 'Modifier un rôle', 'Permet de modifier les rôles existants', 'roles'],
+      ['permission-role-delete', 'Supprimer un rôle', 'Permet de supprimer des rôles', 'roles'],
+      ['permission-team-create', 'Créer un membre', 'Permet d\'ajouter des membres à l\'équipe', 'team'],
+      ['permission-team-read', 'Lire les membres', 'Permet de voir les membres de l\'équipe', 'team'],
+      ['permission-team-update', 'Modifier un membre', 'Permet de modifier les membres', 'team'],
+      ['permission-team-delete', 'Supprimer un membre', 'Permet de supprimer des membres', 'team'],
+      ['permission-song-create', 'Ajouter un chant', 'Permet d\'ajouter des chants', 'songs'],
+      ['permission-song-read', 'Lire les chants', 'Permet de voir les chants', 'songs'],
+      ['permission-song-update', 'Modifier un chant', 'Permet de modifier les chants', 'songs'],
+      ['permission-song-delete', 'Supprimer un chant', 'Permet de supprimer des chants', 'songs'],
+      ['permission-worship-create', 'Créer un culte', 'Permet de créer des cultes', 'worships'],
+      ['permission-worship-read', 'Lire les cultes', 'Permet de voir les cultes', 'worships'],
+      ['permission-worship-update', 'Modifier un culte', 'Permet de modifier les cultes', 'worships'],
+      ['permission-worship-delete', 'Supprimer un culte', 'Permet de supprimer des cultes', 'worships'],
+      ['permission-worship-validate', 'Valider un culte', 'Permet de valider/publier un culte', 'worships'],
+      ['permission-notification-create', 'Envoyer notification', 'Permet d\'envoyer des notifications', 'notifications'],
+      ['permission-notification-read', 'Lire notifications', 'Permet de voir les notifications', 'notifications'],
+      ['permission-notification-delete', 'Supprimer notification', 'Permet de supprimer des notifications', 'notifications'],
+    ];
+    const stmt = db.prepare('INSERT OR IGNORE INTO permissions (id, name, description, category) VALUES (?, ?, ?, ?)');
+    for (const p of perms) stmt.run(...p);
+  }
+
+  if (db.prepare('SELECT COUNT(*) as c FROM roles').get().c === 0) {
+    const adminPerms = db.prepare('SELECT id FROM permissions').all().map(p => p.id);
+    const editorPerms = db.prepare('SELECT id FROM permissions WHERE category NOT IN (\'users\', \'roles\')').all().map(p => p.id);
+    db.prepare(`INSERT INTO roles (id, name, level, description, permissions) VALUES (?, ?, ?, ?, ?)`).run(
+      'role-admin-001', 'Administrateur', 5, 'Accès complet à toutes les fonctionnalités', JSON.stringify(adminPerms)
+    );
+    db.prepare(`INSERT INTO roles (id, name, level, description, permissions) VALUES (?, ?, ?, ?, ?)`).run(
+      'role-editor-001', 'Éditeur', 4, 'Gestion du contenu sans administration', JSON.stringify(editorPerms)
+    );
+    db.prepare(`INSERT INTO roles (id, name, level, description, permissions) VALUES (?, ?, ?, ?, ?)`).run(
+      'role-leader-001', 'Leader', 3, 'Gestion des cultes et de l\'équipe', JSON.stringify(['permission-team-read', 'permission-song-read', 'permission-worship-create'])
+    );
+    db.prepare(`INSERT INTO roles (id, name, level, description, permissions) VALUES (?, ?, ?, ?, ?)`).run(
+      'role-viewer-001', 'Lecteur', 1, 'Accès en lecture seule', JSON.stringify(['permission-team-read', 'permission-song-read', 'permission-worship-read'])
+    );
+  }
+
+  if (db.prepare('SELECT COUNT(*) as c FROM discussions').get().c === 0) {
+    const discussions = [
+      ['discussion-generale', 'Discussion Générale', 'Messages Directs', 'document-text'],
+      ['equipe-louange', 'Équipe Louange', 'Messages Directs', 'document-text'],
+      ['leader-louange', 'Leader Louange', 'Messages Directs', 'document-text'],
+      ['alerte-urgente', 'Alerte Urgente', 'Alertes Urgentes', 'alert-circle'],
+      ['rappel-service', 'Rappel de Service', 'Rappels de Service', 'alarm'],
+      ['confirmation-presence', 'Confirmation de Présence', 'Confirmations', 'checkbox'],
+    ];
+    const stmt = db.prepare('INSERT OR IGNORE INTO discussions (id, title, category, icon, hasNewMessages, hasUrgentAlert) VALUES (?, ?, ?, ?, ?, ?)');
+    for (const d of discussions) stmt.run(...d, 0, 0);
+  }
 
 }
 

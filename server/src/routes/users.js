@@ -56,7 +56,8 @@ router.put('/:id', requireAdmin, (req, res) => {
   const existing = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Utilisateur non trouvé' });
   const { name, email, role, status, phone, department, position } = req.body;
-  const permissions = role && role !== existing.role ? getPermissionsForRole(role) : undefined;
+  const roleChanged = role && role !== existing.role;
+  const permissions = roleChanged ? getPermissionsForRole(role) : undefined;
   db.prepare(`UPDATE users SET name=?, email=?, role=?, status=?, phone=?, department=?, position=?,
     ${permissions ? 'permissions=?,' : ''} updated_at=datetime('now') WHERE id=?`).run(
     name || existing.name,
@@ -69,6 +70,15 @@ router.put('/:id', requireAdmin, (req, res) => {
     ...(permissions ? [JSON.stringify(permissions)] : []),
     req.params.id
   );
+  if (roleChanged) {
+    const roleNames = { admin: 'Administrateur', editor: 'Éditeur', viewer: 'Visualiseur' };
+    db.prepare(`INSERT INTO notifications (title, message, type, targetAudience, userId)
+      VALUES (?, ?, ?, ?, ?)`).run(
+      'Rôle mis à jour',
+      `Votre rôle a été changé en "${roleNames[role] || role}"`,
+      'success', 'all', req.params.id
+    );
+  }
   const user = db.prepare('SELECT id, name, email, role, permissions, status, phone, department, position, lastLogin, created_at, updated_at FROM users WHERE id = ?').get(req.params.id);
   res.json({ ...user, permissions: JSON.parse(user.permissions) });
 });
@@ -107,7 +117,17 @@ function getPermissionsForRole(role) {
     canCommentOnNotifications: true
   };
   if (role === 'admin') return Object.fromEntries(Object.entries(viewer).map(([k]) => [k, true]));
-  if (role === 'editor') return { ...viewer };
+  if (role === 'editor') return { ...viewer,
+    canManageSongs: true,
+    canCreateCults: true,
+    canEditCults: true,
+    canSubmitCults: true,
+    canCreateLeaderCults: true,
+    canEditLeaderCults: true,
+    canSubmitLeaderCults: true,
+    canSelectSongs: true,
+    canAssignMusicians: true,
+  };
   return viewer;
 }
 

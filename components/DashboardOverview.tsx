@@ -1,9 +1,9 @@
 import { useAuth } from '@/context/AuthContext';
-import { useSongs, useTeamMembers } from '@/hooks/useSimpleDatabase';
+import { useSongs, useTeamMembers, useWorships, useNotifications } from '@/hooks/useSimpleDatabase';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -12,20 +12,12 @@ import {
 } from 'react-native';
 import { ThemedText } from './ThemedText';
 
-interface ActivityItem {
-  id: string;
-  type: 'worship' | 'notification' | 'song' | 'member';
-  title: string;
-  description: string;
-  timestamp: string;
-  status?: 'completed' | 'pending' | 'scheduled';
-  priority?: 'low' | 'medium' | 'high' | 'urgent';
-}
-
 export function DashboardOverview() {
   const { user, hasPermission } = useAuth();
   const { songs } = useSongs();
   const { teamMembers } = useTeamMembers();
+  const { worships } = useWorships();
+  const { notifications } = useNotifications();
 
   const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
@@ -37,114 +29,19 @@ export function DashboardOverview() {
   const warningColor = useThemeColor({}, 'warning');
   const errorColor = useThemeColor({}, 'error');
 
-  // Données simulées pour les activités récentes
-  const [recentActivities] = useState<ActivityItem[]>([
-    {
-      id: '1',
-      type: 'worship',
-      title: 'Culte du Dimanche créé',
-      description: 'Nouveau culte programmé pour le 22 décembre à 10h00',
-      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-      status: 'scheduled'
-    },
-    {
-      id: '2',
-      type: 'notification',
-      title: 'Notification envoyée',
-      description: 'Rappel de répétition envoyé aux musiciens',
-      timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-      status: 'completed',
-      priority: 'medium'
-    },
-    {
-      id: '3',
-      type: 'song',
-      title: 'Nouveau chant ajouté',
-      description: 'Amazing Grace ajouté au répertoire',
-      timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-      status: 'completed'
-    },
-    {
-      id: '4',
-      type: 'member',
-      title: 'Nouveau membre d\'équipe',
-      description: 'Jean Dupont ajouté comme pianiste',
-      timestamp: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
-      status: 'completed'
-    },
-    {
-      id: '5',
-      type: 'notification',
-      title: 'Notification programmée',
-      description: 'Rappel de culte programmé pour demain matin',
-      timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-      status: 'scheduled',
-      priority: 'high'
-    }
-  ]);
+  const now = new Date();
+  const upcomingWorships = worships.filter(w => new Date(`${w.date}T${w.time}`) >= now).length;
+  const unreadNotifications = notifications.filter(n => !n.read).length;
 
-  // Statistiques
   const stats = {
     totalSongs: songs.length,
     totalMembers: teamMembers.length,
-    upcomingWorships: 3, // Simulé
-    pendingNotifications: 2, // Simulé
-    thisWeekActivities: recentActivities.filter(activity => {
-      const activityDate = new Date(activity.timestamp);
-      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      return activityDate >= weekAgo;
-    }).length
-  };
-
-  const getActivityIcon = (type: ActivityItem['type']) => {
-    switch (type) {
-      case 'worship': return 'calendar';
-      case 'notification': return 'notifications';
-      case 'song': return 'musical-notes';
-      case 'member': return 'person-add';
-      default: return 'information-circle';
-    }
-  };
-
-  const getActivityColor = (type: ActivityItem['type']) => {
-    switch (type) {
-      case 'worship': return primaryColor;
-      case 'notification': return warningColor;
-      case 'song': return successColor;
-      case 'member': return primaryColor;
-      default: return secondaryColor;
-    }
-  };
-
-  const getStatusColor = (status?: ActivityItem['status']) => {
-    switch (status) {
-      case 'completed': return successColor;
-      case 'pending': return warningColor;
-      case 'scheduled': return primaryColor;
-      default: return secondaryColor;
-    }
-  };
-
-  const getPriorityColor = (priority?: ActivityItem['priority']) => {
-    switch (priority) {
-      case 'urgent': return errorColor;
-      case 'high': return '#f97316';
-      case 'medium': return warningColor;
-      case 'low': return successColor;
-      default: return secondaryColor;
-    }
-  };
-
-  const formatTimeAgo = (timestamp: string) => {
-    const now = new Date();
-    const time = new Date(timestamp);
-    const diffInHours = Math.floor((now.getTime() - time.getTime()) / (1000 * 60 * 60));
-    
-    if (diffInHours < 1) return 'Il y a moins d\'une heure';
-    if (diffInHours < 24) return `Il y a ${diffInHours}h`;
-    const diffInDays = Math.floor(diffInHours / 24);
-    if (diffInDays < 7) return `Il y a ${diffInDays}j`;
-    return time.toLocaleDateString('fr-FR');
+    upcomingWorships,
+    pendingNotifications: unreadNotifications,
+    thisWeekActivities: notifications.filter(n => {
+      const d = new Date(n.created_at || n.sent_at);
+      return d >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    }).length,
   };
 
   const quickActions = [
@@ -182,13 +79,12 @@ export function DashboardOverview() {
     }
   ];
 
-  const availableActions = quickActions.filter(action => 
+  const availableActions = quickActions.filter(action =>
     !action.permission || hasPermission(action.permission as any)
   );
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Statistiques */}
       <View style={styles.statsContainer}>
         <View style={[styles.statCard, { backgroundColor: cardColor, borderColor }]}>
           <Ionicons name="musical-notes" size={24} color={successColor} />
@@ -231,7 +127,6 @@ export function DashboardOverview() {
         </View>
       </View>
 
-      {/* Actions rapides */}
       {availableActions.length > 0 && (
         <View style={styles.section}>
           <ThemedText style={[styles.sectionTitle, { color: textColor }]}>
@@ -254,58 +149,41 @@ export function DashboardOverview() {
         </View>
       )}
 
-      {/* Activités récentes */}
       <View style={styles.section}>
         <ThemedText style={[styles.sectionTitle, { color: textColor }]}>
           Activités récentes
         </ThemedText>
         <View style={styles.activitiesList}>
-          {recentActivities.slice(0, 5).map((activity) => (
+          {notifications.slice(0, 5).map((activity) => (
             <View key={activity.id} style={[styles.activityCard, { backgroundColor: cardColor, borderColor }]}>
               <View style={styles.activityHeader}>
-                <View style={[styles.activityIconContainer, { backgroundColor: `${getActivityColor(activity.type)}20` }]}>
-                  <Ionicons 
-                    name={getActivityIcon(activity.type) as any} 
-                    size={20} 
-                    color={getActivityColor(activity.type)} 
-                  />
+                <View style={[styles.activityIconContainer, { backgroundColor: `${primaryColor}20` }]}>
+                  <Ionicons name="notifications" size={20} color={primaryColor} />
                 </View>
                 <View style={styles.activityContent}>
                   <View style={styles.activityTitleRow}>
                     <ThemedText style={[styles.activityTitle, { color: textColor }]}>
                       {activity.title}
                     </ThemedText>
-                    <View style={styles.activityMeta}>
-                      {activity.priority && (
-                        <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(activity.priority) }]}>
-                          <ThemedText style={styles.priorityText}>
-                            {activity.priority.toUpperCase()}
-                          </ThemedText>
-                        </View>
-                      )}
-                      <View style={[styles.statusBadge, { backgroundColor: getStatusColor(activity.status) }]}>
-                        <ThemedText style={styles.statusText}>
-                          {activity.status === 'completed' ? 'Terminé' :
-                           activity.status === 'pending' ? 'En attente' :
-                           activity.status === 'scheduled' ? 'Programmé' : 'Inconnu'}
-                        </ThemedText>
-                      </View>
-                    </View>
                   </View>
                   <ThemedText style={[styles.activityDescription, { color: secondaryColor }]}>
-                    {activity.description}
+                    {activity.message}
                   </ThemedText>
                   <ThemedText style={[styles.activityTime, { color: secondaryColor }]}>
-                    {formatTimeAgo(activity.timestamp)}
+                    {new Date(activity.created_at || activity.sent_at).toLocaleDateString('fr-FR')}
                   </ThemedText>
                 </View>
               </View>
             </View>
           ))}
+          {notifications.length === 0 && (
+            <ThemedText style={[styles.activityDescription, { color: secondaryColor, textAlign: 'center' }]}>
+              Aucune activité récente
+            </ThemedText>
+          )}
         </View>
       </View>
 
-      {/* Résumé des permissions */}
       <View style={[styles.permissionsCard, { backgroundColor: cardColor, borderColor }]}>
         <ThemedText style={[styles.permissionsTitle, { color: textColor }]}>
           Votre niveau d'accès
@@ -444,26 +322,6 @@ const styles = StyleSheet.create({
   activityMeta: {
     flexDirection: 'row',
     gap: 6,
-  },
-  priorityBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-  priorityText: {
-    color: 'white',
-    fontSize: 8,
-    fontWeight: '600',
-  },
-  statusBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-  statusText: {
-    color: 'white',
-    fontSize: 8,
-    fontWeight: '600',
   },
   activityDescription: {
     fontSize: 12,

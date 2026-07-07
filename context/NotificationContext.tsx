@@ -1,4 +1,5 @@
 import React, { createContext, useContext, ReactNode } from 'react';
+import { useAuth } from './AuthContext';
 import { useNotifications as useNotificationsDB } from '@/hooks/useSimpleDatabase';
 
 export interface NotificationItem {
@@ -7,6 +8,7 @@ export interface NotificationItem {
   message: string;
   type: 'info' | 'urgent' | 'reminder' | 'success' | 'warning';
   targetAudience: 'all' | 'musicians' | 'leaders' | 'active_members' | 'chantres' | 'instrumentistes';
+  userId: string;
   isScheduled: boolean;
   scheduledDate?: string;
   sent_at: string;
@@ -30,6 +32,7 @@ interface NotificationContextType {
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const {
     notifications,
     unreadCount,
@@ -40,7 +43,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     markAsRead,
     markAllAsRead,
     deleteNotification
-  } = useNotificationsDB();
+  } = useNotificationsDB(user?.id);
 
   const addNotification = async (notificationData: Omit<NotificationItem, 'id' | 'sent_at' | 'read' | 'created_at' | 'updated_at'>) => {
     const dbNotification = {

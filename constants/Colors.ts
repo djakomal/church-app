@@ -1,48 +1,41 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
- */
-
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+const tintColorLight = '#6366f1';
+const tintColorDark = '#818cf8';
 
 export const Colors = {
   light: {
-    text: '#11181C',
-    background: '#fff',
+    text: '#0f172a',
+    background: '#f8fafc',
     tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
+    icon: '#94a3b8',
+    tabIconDefault: '#94a3b8',
     tabIconSelected: tintColorLight,
-    // Church app specific colors
-    primary: '#2563eb', // Blue for primary elements
-    secondary: '#64748b', // Gray for secondary elements
-    accent: '#dc2626', // Red for important actions
-    lightGray: '#f1f5f9', // Light gray for backgrounds
-    mediumGray: '#cbd5e1', // Medium gray for cards
-    darkGray: '#475569', // Dark gray for text
-    success: '#16a34a', // Green for confirmed status
-    warning: '#ca8a04', // Yellow for pending status
-    error: '#dc2626', // Red for absent status
-    cardBackground: '#f8fafc', // Light card background
+    primary: '#6366f1',
+    secondary: '#94a3b8',
+    accent: '#f43f5e',
+    lightGray: '#f1f5f9',
+    mediumGray: '#e2e8f0',
+    darkGray: '#475569',
+    success: '#10b981',
+    warning: '#f59e0b',
+    error: '#ef4444',
+    cardBackground: '#ffffff',
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
+    text: '#f1f5f9',
+    background: '#0f172a',
     tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
+    icon: '#64748b',
+    tabIconDefault: '#64748b',
     tabIconSelected: tintColorDark,
-    // Church app specific colors
-    primary: '#3b82f6',
-    secondary: '#94a3b8',
-    accent: '#ef4444',
+    primary: '#818cf8',
+    secondary: '#64748b',
+    accent: '#fb7185',
     lightGray: '#1e293b',
     mediumGray: '#334155',
-    darkGray: '#cbd5e1',
-    success: '#22c55e',
-    warning: '#eab308',
-    error: '#ef4444',
+    darkGray: '#94a3b8',
+    success: '#34d399',
+    warning: '#fbbf24',
+    error: '#f87171',
     cardBackground: '#1e293b',
   },
 };

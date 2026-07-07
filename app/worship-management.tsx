@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { Alert, ScrollView, StyleSheet, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { useAuth } from '@/context/AuthContext';
-import { useSongs, useTeamMembers, useWorships } from '@/hooks/useSimpleDatabase';
+import { useSongs, useTeamMembers, useWorships, useNotifications } from '@/hooks/useSimpleDatabase';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { LoadingIndicator } from '@/components/LoadingIndicator';
@@ -627,18 +627,14 @@ export default function WorshipManagementScreen() {
     }
   }, [editingWorship, updateWorship, createWorship, t]);
 
-  const [localNotifications, setLocalNotifications] = useState<NotificationData[]>([
-    {
-      id: 1,
-      title: 'Répétition ce soir',
-      message: 'N\'oubliez pas la répétition de ce soir à 19h en salle de musique.',
-      type: 'info',
-      targetAudience: 'musicians',
-      isScheduled: false,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }
-  ]);
+  const {
+    notifications,
+    isLoading: notifsLoading,
+    error: notifsError,
+    createNotification,
+    updateNotification,
+    deleteNotification: deleteNotif
+  } = useNotifications();
 
   const handleAddNotification = useCallback(() => {
     if (!canSendCommunications) {
@@ -654,14 +650,14 @@ export default function WorshipManagementScreen() {
       Alert.alert(t('common.accessDenied'), t('notifications.accessDeniedEdit'));
       return;
     }
-    const notification = localNotifications.find(n => n.id === id);
+    const notification = notifications.find(n => n.id === id);
     if (notification) {
       setEditingNotification(notification);
       setShowNotificationModal(true);
     }
-  }, [canSendCommunications, localNotifications, t]);
+  }, [canSendCommunications, notifications, t]);
 
-  const handleDeleteNotification = useCallback((id: number) => {
+  const handleDeleteNotification = useCallback(async (id: number) => {
     if (!canSendCommunications) {
       Alert.alert(t('common.accessDenied'), t('notifications.accessDeniedDelete'));
       return;
@@ -674,41 +670,44 @@ export default function WorshipManagementScreen() {
         {
           text: t('common.delete'),
           style: 'destructive',
-          onPress: () => {
-            setLocalNotifications(prev => prev.filter(n => n.id !== id));
-            Alert.alert(t('common.success'), t('notifications.deletedSuccess'));
+          onPress: async () => {
+            try {
+              await deleteNotif(id);
+              Alert.alert(t('common.success'), t('notifications.deletedSuccess'));
+            } catch (error) {
+              Alert.alert(t('common.error'), t('notifications.deleteError'));
+            }
           }
         }
       ]
     );
-  }, [canSendCommunications, t]);
+  }, [canSendCommunications, deleteNotif, t]);
 
-  const handleSaveNotification = useCallback((notificationData: Omit<NotificationData, 'id' | 'created_at' | 'updated_at'>) => {
-    if (editingNotification && editingNotification.id) {
-      setLocalNotifications(prev => prev.map(n => 
-        n.id === editingNotification.id 
-          ? { ...n, ...notificationData, updated_at: new Date().toISOString() }
-          : n
-      ));
-      Alert.alert(t('common.success'), t('notifications.updatedSuccess'));
-    } else {
-      const newNotification: NotificationData = {
-        ...notificationData,
-        id: Math.max(...localNotifications.map(n => n.id || 0), 0) + 1,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-      setLocalNotifications(prev => [...prev, newNotification]);
-      
-      if (notificationData.isScheduled) {
-        Alert.alert(t('common.success'), t('notifications.scheduledSuccess'));
+  const handleSaveNotification = useCallback(async (notificationData: Omit<NotificationData, 'id' | 'created_at' | 'updated_at'>) => {
+    try {
+      if (editingNotification && editingNotification.id) {
+        await updateNotification(editingNotification.id, notificationData);
+        Alert.alert(t('common.success'), t('notifications.updatedSuccess'));
       } else {
-        Alert.alert(t('common.success'), t('notifications.sentSuccess'));
+        await createNotification({
+          ...notificationData,
+          sent_at: notificationData.isScheduled && notificationData.scheduledDate
+            ? notificationData.scheduledDate
+            : new Date().toISOString(),
+          read: false,
+        });
+        if (notificationData.isScheduled) {
+          Alert.alert(t('common.success'), t('notifications.scheduledSuccess'));
+        } else {
+          Alert.alert(t('common.success'), t('notifications.sentSuccess'));
+        }
       }
+      setShowNotificationModal(false);
+      setEditingNotification(null);
+    } catch (error) {
+      Alert.alert(t('common.error'), t('notifications.saveError'));
     }
-    setShowNotificationModal(false);
-    setEditingNotification(null);
-  }, [editingNotification, localNotifications, t]);
+  }, [editingNotification, createNotification, updateNotification, t]);
 
   if (songsError || membersError) {
     return (
@@ -788,7 +787,7 @@ export default function WorshipManagementScreen() {
             
             <PermissionGate permission="canSendCommunications">
               <NotificationManagementSection
-                notifications={localNotifications}
+                notifications={notifications}
                 canSendCommunications={canSendCommunications}
                 onAddNotification={handleAddNotification}
                 onEditNotification={handleEditNotification}

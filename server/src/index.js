@@ -1,3 +1,5 @@
+require('dotenv').config({ path: require('path').resolve(__dirname, '..', '.env') });
+
 const express = require('express');
 const cors = require('cors');
 const { getDb } = require('./database');
@@ -11,6 +13,13 @@ const commentsRouter = require('./routes/comments');
 const communicationsRouter = require('./routes/communications');
 const authRouter = require('./routes/auth');
 const usersRouter = require('./routes/users');
+const rolesRouter = require('./routes/roles');
+const permissionsRouter = require('./routes/permissions');
+const messagesRouter = require('./routes/messages');
+const discussionsRouter = require('./routes/discussions');
+const attendanceRouter = require('./routes/attendance');
+const userSettingsRouter = require('./routes/userSettings');
+const featuresRouter = require('./routes/features');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -30,6 +39,13 @@ app.use('/api/comments', commentsRouter);
 app.use('/api/communications', communicationsRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);
+app.use('/api/roles', rolesRouter);
+app.use('/api/permissions', permissionsRouter);
+app.use('/api/messages', messagesRouter);
+app.use('/api/discussions', discussionsRouter);
+app.use('/api/attendance', attendanceRouter);
+app.use('/api/user-settings', userSettingsRouter);
+app.use('/api/features', featuresRouter);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

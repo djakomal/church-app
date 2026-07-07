@@ -7,7 +7,7 @@ import { WorshipAssignmentModal } from '@/components/WorshipAssignmentModal';
 import { useAuth } from '@/context/AuthContext';
 import { useT } from '@/context/I18nContext';
 import { useThemeColor } from '@/hooks/useThemeColor';
-import { useWorships, useMusicians } from '@/hooks/useSimpleDatabase';
+import { useWorships, useMusicians, useNotifications } from '@/hooks/useSimpleDatabase';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
@@ -49,6 +49,8 @@ export default function WorshipManagementTabScreen() {
     deleteMusician
   } = useMusicians();
 
+  const { createNotification } = useNotifications();
+
   const [showWorshipModal, setShowWorshipModal] = useState(false);
   const [editingWorship, setEditingWorship] = useState<Worship | null>(null);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
@@ -57,22 +59,6 @@ export default function WorshipManagementTabScreen() {
   const [editingMusician, setEditingMusician] = useState<Musician | null>(null);
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
   const [assigningWorship, setAssigningWorship] = useState<Worship | null>(null);
-
-  if (!user || !hasPermission('canManageWorship')) {
-    return (
-      <SafeAreaView style={[styles.container, { backgroundColor }]}>
-        <View style={styles.accessDenied}>
-          <Ionicons name="lock-closed" size={48} color={secondaryColor} />
-          <ThemedText style={[styles.accessDeniedText, { color: textColor }]}>
-            {t('common.accessDenied')}
-          </ThemedText>
-          <ThemedText style={[styles.accessDeniedSubtext, { color: secondaryColor }]}>
-            {t('worships.accessDenied')}
-          </ThemedText>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   const handleAddWorship = () => {
     setEditingWorship(null);
@@ -111,13 +97,46 @@ export default function WorshipManagementTabScreen() {
 
   const handleSaveWorship = async (worshipData: Omit<Worship, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      if (editingWorship && editingWorship.id) {
-        await updateWorship(editingWorship.id, worshipData);
+      const wasEditing = editingWorship?.id;
+      if (wasEditing) {
+        await updateWorship(wasEditing, worshipData);
         Alert.alert(t('common.success'), t('worships.updatedSuccess'));
       } else {
         await createWorship(worshipData);
         Alert.alert(t('common.success'), t('worships.createdSuccess'));
       }
+
+      const assignedIds = worshipData.assignedMusicians || [];
+      const oldIds = (editingWorship?.assignedMusicians || []) as number[];
+
+      const newAssignments = assignedIds.filter(id => !oldIds.includes(id));
+      if (newAssignments.length > 0) {
+        const assignedNames = newAssignments.map(id => {
+          const m = musicians.find(m => m.id === id);
+          return m?.name || '';
+        }).filter(Boolean);
+
+        const dateStr = worshipData.date || '';
+        const timeStr = worshipData.time || '';
+        const title = worshipData.title || t('worships.title');
+        const location = worshipData.location || '';
+
+        const message = assignedNames.length === 1
+          ? `${assignedNames[0]}, vous êtes programmé(e) pour "${title}" le ${dateStr} à ${timeStr}${location ? ' à ' + location : ''}.`
+          : `Musiciens programmés pour "${title}" le ${dateStr} à ${timeStr}${location ? ' à ' + location : ''}: ${assignedNames.join(', ')}.`;
+
+        await createNotification({
+          title: t('worships.musicianAssigned'),
+          message,
+          type: 'info',
+          targetAudience: 'all',
+          isScheduled: false,
+          scheduledDate: '',
+          sent_at: new Date().toISOString(),
+          read: false,
+        });
+      }
+
       setShowWorshipModal(false);
       setEditingWorship(null);
     } catch (error) {
@@ -253,17 +272,19 @@ export default function WorshipManagementTabScreen() {
           </ThemedText>
         </View>
 
-        <View style={styles.quickAction}>
-          <TouchableOpacity
-            style={[styles.createButton, { backgroundColor: primaryColor }]}
-            onPress={handleAddWorship}
-          >
-            <Ionicons name="add-circle" size={24} color="white" />
-            <ThemedText style={styles.createButtonText}>
-              {t('worships.add')}
-            </ThemedText>
-          </TouchableOpacity>
-        </View>
+        {hasPermission('canManageWorship') && (
+          <View style={styles.quickAction}>
+            <TouchableOpacity
+              style={[styles.createButton, { backgroundColor: primaryColor }]}
+              onPress={handleAddWorship}
+            >
+              <Ionicons name="add-circle" size={24} color="white" />
+              <ThemedText style={styles.createButtonText}>
+                {t('worships.add')}
+              </ThemedText>
+            </TouchableOpacity>
+          </View>
+        )}
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -291,9 +312,9 @@ export default function WorshipManagementTabScreen() {
                   preacher={worship.preacher}
                   songs={worship.songs}
                   musicians={worship.musicians}
-                  onEdit={() => handleEditWorship(worship.id!)}
-                  onDelete={() => handleDeleteWorship(worship.id!)}
-                  onAssignMusicians={() => handleAssignMusicians(worship)}
+                  onEdit={hasPermission('canManageWorship') ? () => handleEditWorship(worship.id!) : undefined}
+                  onDelete={hasPermission('canManageWorship') ? () => handleDeleteWorship(worship.id!) : undefined}
+                  onAssignMusicians={hasPermission('canAssignMusicians') ? () => handleAssignMusicians(worship) : undefined}
                 />
               ))}
             </View>
@@ -357,20 +378,22 @@ export default function WorshipManagementTabScreen() {
                           </ThemedText>
                         </View>
                       </View>
-                      <View style={styles.musicianActions}>
-                        <TouchableOpacity
-                          onPress={() => handleEditMusician(musician.id!)}
-                          style={[styles.actionButton, { backgroundColor: primaryColor }]}
-                        >
-                          <Ionicons name="pencil" size={12} color="white" />
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          onPress={() => handleDeleteMusician(musician.id!)}
-                          style={[styles.actionButton, { backgroundColor: errorColor }]}
-                        >
-                          <Ionicons name="trash" size={12} color="white" />
-                        </TouchableOpacity>
-                      </View>
+                      {hasPermission('canManageTeam') && (
+                        <View style={styles.musicianActions}>
+                          <TouchableOpacity
+                            onPress={() => handleEditMusician(musician.id!)}
+                            style={[styles.actionButton, { backgroundColor: primaryColor }]}
+                          >
+                            <Ionicons name="pencil" size={12} color="white" />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={() => handleDeleteMusician(musician.id!)}
+                            style={[styles.actionButton, { backgroundColor: errorColor }]}
+                          >
+                            <Ionicons name="trash" size={12} color="white" />
+                          </TouchableOpacity>
+                        </View>
+                      )}
                     </View>
                     
                     {musician.availability && musician.availability.length > 0 && (

@@ -7,7 +7,6 @@ import { useComments } from '@/context/CommentContext';
 import { useNotifications } from '@/context/NotificationContext';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { useT } from '@/context/I18nContext';
-import { EventBus } from '@/utils/EventBus';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import { Alert, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
