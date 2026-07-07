@@ -21,7 +21,23 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.png",
+      "name": "Church App",
+      "shortName": "ChurchApp",
+      "description": "Application de gestion d'église",
+      "themeColor": "#0a7ea4",
+      "backgroundColor": "#ffffff",
+      "orientation": "portrait",
+      "lang": "fr",
+      "scope": "/",
+      "startUrl": "/",
+      "display": "standalone",
+      "barStyle": "default",
+      "preferRelatedApplications": false,
+      "relatedApplications": [],
+      "dangerous": {
+        "enableStaticViewport": true
+      }
     },
     "plugins": [
       "expo-router",

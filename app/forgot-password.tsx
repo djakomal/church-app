@@ -41,7 +41,7 @@ export default function ForgotPasswordScreen() {
   const successColor = useThemeColor({}, 'success');
   const insets = useSafeAreaInsets();
 
-  const { requestOTP, verifyOTP, resetPassword } = useAuth();
+  const { requestResetOTP, verifyOTP, resetPassword } = useAuth();
 
   useEffect(() => {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
@@ -65,7 +65,7 @@ export default function ForgotPasswordScreen() {
     }
     setIsLoading(true);
     try {
-      const result = await requestOTP(email.trim());
+      const result = await requestResetOTP(email.trim());
       if (result.ok) {
         setStep('otp');
         startCountdown();

@@ -15,15 +15,16 @@ function generateOTP() {
 }
 
 function createTransporter() {
-  if (process.env.SMTP_HOST) {
+  if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+    const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+    const port = parseInt(process.env.SMTP_PORT || '465');
+    const secure = process.env.SMTP_SECURE === 'true' || port === 465;
     return nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT || '587'),
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
+      host,
+      port,
+      secure,
+      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+      tls: { rejectUnauthorized: false },
     });
   }
   return null;
@@ -116,6 +117,49 @@ router.post('/verify-otp', (req, res) => {
 
   record.used = true;
   setTimeout(() => delete otpStore[email.toLowerCase()], 60 * 1000);
+  res.json({ ok: true });
+});
+
+// --- SEND RESET OTP (for forgot-password, checks email EXISTS) ---
+router.post('/send-reset-otp', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email requis' });
+
+  const existing = getDb().prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase());
+  if (!existing) return res.status(404).json({ error: 'Aucun compte trouvé avec cet email' });
+
+  const code = generateOTP();
+  otpStore[email.toLowerCase()] = {
+    code,
+    expiresAt: Date.now() + 5 * 60 * 1000,
+    used: false,
+  };
+
+  try {
+    await sendOTPEmail(email, code);
+  } catch (err) {
+    console.error('[OTP] Failed to send email:', err.message);
+  }
+
+  res.json({ ok: true, devCode: process.env.NODE_ENV !== 'production' ? code : undefined });
+});
+
+// --- RESET PASSWORD (after OTP verification) ---
+router.post('/reset-password', (req, res) => {
+  const { email, newPassword } = req.body;
+  if (!email || !newPassword) return res.status(400).json({ error: 'Email et nouveau mot de passe requis' });
+  if (newPassword.length < 6) return res.status(400).json({ error: 'Mot de passe trop court (6 caractères minimum)' });
+
+  const record = otpStore[email.toLowerCase()];
+  if (!record || !record.used) return res.status(400).json({ error: 'Veuillez d\'abord vérifier votre code' });
+
+  const db = getDb();
+  const user = db.prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase());
+  if (!user) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+
+  const hashed = bcrypt.hashSync(newPassword, 10);
+  db.prepare('UPDATE users SET password=?, updated_at=datetime(\'now\') WHERE email=?').run(hashed, email.toLowerCase());
+  delete otpStore[email.toLowerCase()];
   res.json({ ok: true });
 });
 

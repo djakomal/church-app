@@ -34,6 +34,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   requestOTP: (email: string) => Promise<{ ok: boolean; reason?: string; otp?: string; devCode?: string }>;
+  requestResetOTP: (email: string) => Promise<{ ok: boolean; reason?: string; devCode?: string }>;
   verifyOTP: (email: string, otp: string) => Promise<{ ok: boolean; reason?: string }>;
   register: (data: RegisterData) => Promise<boolean>;
   logout: () => Promise<void>;
@@ -134,6 +135,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const requestResetOTP = async (email: string): Promise<{ ok: boolean; reason?: string; devCode?: string }> => {
+    try {
+      const res = await authApi.sendResetOTP(email);
+      return { ok: true, devCode: res.devCode };
+    } catch (error: any) {
+      return { ok: false, reason: error.message };
+    }
+  };
+
   const verifyOTP = async (email: string, otp: string): Promise<{ ok: boolean; reason?: string }> => {
     try {
       await authApi.verifyOTP(email, otp);
@@ -197,7 +207,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     email: string,
     newPassword: string
   ): Promise<{ ok: boolean; reason?: string }> => {
-    return { ok: false, reason: 'not_available' };
+    try {
+      await authApi.resetPassword(email, newPassword);
+      return { ok: true };
+    } catch (error: any) {
+      return { ok: false, reason: error.message };
+    }
   };
 
   const updateProfile = async (name: string, email: string): Promise<boolean> => {
@@ -241,6 +256,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading,
       login,
       requestOTP,
+      requestResetOTP,
       verifyOTP,
       register,
       logout,

@@ -25,6 +25,9 @@ export const authApi = {
   sendOTP: async (email: string) => {
     return api.post<{ ok: boolean; devCode?: string }>('/auth/send-otp', { email });
   },
+  sendResetOTP: async (email: string) => {
+    return api.post<{ ok: boolean; devCode?: string }>('/auth/send-reset-otp', { email });
+  },
   verifyOTP: async (email: string, otp: string) => {
     return api.post<{ ok: boolean }>('/auth/verify-otp', { email, otp });
   },
@@ -44,6 +47,9 @@ export const authApi = {
   },
   changePassword: async (currentPassword: string, newPassword: string) => {
     return api.put<{ ok: boolean }>('/auth/password', { currentPassword, newPassword });
+  },
+  resetPassword: async (email: string, newPassword: string) => {
+    return api.post<{ ok: boolean }>('/auth/reset-password', { email, newPassword });
   },
   updateProfile: async (name: string, email: string) => {
     return api.put<User>('/auth/profile', { name, email });
