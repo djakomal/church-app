@@ -1,9 +1,10 @@
 const { Router } = require('express');
 const { getDb } = require('../database');
+const { authenticate } = require('./middleware');
 
 const router = Router();
 
-router.get('/', (req, res) => {
+router.get('/', authenticate, (req, res) => {
   const db = getDb();
   const { userId } = req.query;
   let notifications;
@@ -15,14 +16,14 @@ router.get('/', (req, res) => {
   res.json(notifications.map(parseNotif));
 });
 
-router.get('/:id', (req, res) => {
+router.get('/:id', authenticate, (req, res) => {
   const db = getDb();
   const n = db.prepare('SELECT * FROM notifications WHERE id = ?').get(req.params.id);
   if (!n) return res.status(404).json({ error: 'Notification non trouvée' });
   res.json(parseNotif(n));
 });
 
-router.post('/', (req, res) => {
+router.post('/', authenticate, (req, res) => {
   const db = getDb();
   const { title, message, type, targetAudience, userId, isScheduled, scheduledDate } = req.body;
   if (!title || !message) return res.status(400).json({ error: 'Titre et message requis' });
@@ -35,15 +36,16 @@ router.post('/', (req, res) => {
   res.status(201).json(parseNotif(n));
 });
 
-router.put('/:id', (req, res) => {
+router.put('/:id', authenticate, (req, res) => {
   const db = getDb();
   const existing = db.prepare('SELECT * FROM notifications WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Notification non trouvée' });
-  const { title, message, type, targetAudience, isScheduled, scheduledDate, read } = req.body;
-  db.prepare(`UPDATE notifications SET title=?, message=?, type=?, targetAudience=?,
+  const { title, message, type, targetAudience, userId, isScheduled, scheduledDate, read } = req.body;
+  db.prepare(`UPDATE notifications SET title=?, message=?, type=?, targetAudience=?, userId=?,
     isScheduled=?, scheduledDate=?, read=?, updated_at=datetime('now') WHERE id=?`).run(
     title || existing.title, message || existing.message,
     type || existing.type, targetAudience || existing.targetAudience,
+    userId !== undefined ? userId : existing.userId,
     isScheduled !== undefined ? (isScheduled ? 1 : 0) : existing.isScheduled,
     scheduledDate !== undefined ? scheduledDate : existing.scheduledDate,
     read !== undefined ? (read ? 1 : 0) : existing.read,
@@ -53,21 +55,21 @@ router.put('/:id', (req, res) => {
   res.json(parseNotif(n));
 });
 
-router.delete('/:id', (req, res) => {
+router.delete('/:id', authenticate, (req, res) => {
   const db = getDb();
   const result = db.prepare('DELETE FROM notifications WHERE id = ?').run(req.params.id);
   if (result.changes === 0) return res.status(404).json({ error: 'Notification non trouvée' });
   res.json({ ok: true });
 });
 
-router.post('/:id/read', (req, res) => {
+router.post('/:id/read', authenticate, (req, res) => {
   const db = getDb();
   const result = db.prepare('UPDATE notifications SET read=1 WHERE id=?').run(req.params.id);
   if (result.changes === 0) return res.status(404).json({ error: 'Notification non trouvée' });
   res.json({ ok: true });
 });
 
-router.post('/read-all', (req, res) => {
+router.post('/read-all', authenticate, (req, res) => {
   const db = getDb();
   db.prepare('UPDATE notifications SET read=1 WHERE read=0').run();
   res.json({ ok: true });

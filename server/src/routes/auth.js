@@ -180,7 +180,7 @@ router.post('/register', (req, res) => {
   db.prepare(`INSERT INTO users (id, name, email, role, password, permissions, status)
     VALUES (?, ?, ?, ?, ?, ?, 'active')`).run(id, name, email.toLowerCase(), userRole, hashed, JSON.stringify(permissions));
 
-  const user = db.prepare('SELECT id, name, email, role, permissions, status, created_at FROM users WHERE id = ?').get(id);
+  const user = db.prepare('SELECT id, name, email, role, permissions, status, phone, department, position, lastLogin, created_at, updated_at FROM users WHERE id = ?').get(id);
   user.permissions = JSON.parse(user.permissions);
   const token = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
   res.status(201).json({ user, token });

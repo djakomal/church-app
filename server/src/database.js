@@ -248,18 +248,6 @@ function seedDefaults() {
     );
   }
 
-  if (db.prepare('SELECT COUNT(*) as c FROM features').get().c === 0) {
-    const features = [
-      ['advanced-analytics', 'Analytique Avancée', 'Rapports de comportement utilisateur détaillés', 'leader', 0],
-      ['automated-reminders', 'Rappels Automatisés', 'Notifications et rappels automatiques', 'editor', 1],
-      ['role-management', 'Gestion des Rôles', 'Configuration avancée des rôles et permissions', 'admin', 1],
-      ['data-export', 'Export de Données', 'Export des données vers CSV/PDF', 'editor', 1],
-      ['multi-language', 'Support Multilingue', 'Interface utilisateur multilingue', 'editor', 1],
-    ];
-    const stmt = db.prepare('INSERT OR IGNORE INTO features (id, name, description, requiredRole, isEnabled) VALUES (?, ?, ?, ?, ?)');
-    for (const f of features) stmt.run(...f);
-  }
-
   if (db.prepare('SELECT COUNT(*) as c FROM permissions').get().c === 0) {
     const perms = [
       ['permission-user-create', 'Créer un utilisateur', 'Permet de créer de nouveaux utilisateurs', 'users'],
@@ -307,19 +295,6 @@ function seedDefaults() {
     db.prepare(`INSERT INTO roles (id, name, level, description, permissions) VALUES (?, ?, ?, ?, ?)`).run(
       'role-viewer-001', 'Lecteur', 1, 'Accès en lecture seule', JSON.stringify(['permission-team-read', 'permission-song-read', 'permission-worship-read'])
     );
-  }
-
-  if (db.prepare('SELECT COUNT(*) as c FROM discussions').get().c === 0) {
-    const discussions = [
-      ['discussion-generale', 'Discussion Générale', 'Messages Directs', 'document-text'],
-      ['equipe-louange', 'Équipe Louange', 'Messages Directs', 'document-text'],
-      ['leader-louange', 'Leader Louange', 'Messages Directs', 'document-text'],
-      ['alerte-urgente', 'Alerte Urgente', 'Alertes Urgentes', 'alert-circle'],
-      ['rappel-service', 'Rappel de Service', 'Rappels de Service', 'alarm'],
-      ['confirmation-presence', 'Confirmation de Présence', 'Confirmations', 'checkbox'],
-    ];
-    const stmt = db.prepare('INSERT OR IGNORE INTO discussions (id, title, category, icon, hasNewMessages, hasUrgentAlert) VALUES (?, ?, ?, ?, ?, ?)');
-    for (const d of discussions) stmt.run(...d, 0, 0);
   }
 
 }

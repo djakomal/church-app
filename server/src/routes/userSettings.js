@@ -1,9 +1,10 @@
 const { Router } = require('express');
 const { getDb } = require('../database');
+const { authenticate } = require('./middleware');
 
 const router = Router();
 
-router.get('/:userId', (req, res) => {
+router.get('/:userId', authenticate, (req, res) => {
   const db = getDb();
   const settings = db.prepare('SELECT * FROM user_settings WHERE userId = ?').get(req.params.userId);
   if (!settings) return res.json({ userId: req.params.userId, journeyStep: 0, progress: 0, visitedScreens: '[]', featureAccess: '{}', accessibilityEnabled: 0, fontSize: 16, theme: 'system' });
@@ -15,7 +16,7 @@ router.get('/:userId', (req, res) => {
   });
 });
 
-router.put('/:userId', (req, res) => {
+router.put('/:userId', authenticate, (req, res) => {
   const db = getDb();
   const existing = db.prepare('SELECT * FROM user_settings WHERE userId = ?').get(req.params.userId);
   const { journeyStep, progress, visitedScreens, featureAccess, accessibilityEnabled, fontSize, theme } = req.body;

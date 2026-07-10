@@ -1,22 +1,23 @@
 const { Router } = require('express');
 const { getDb } = require('../database');
+const { authenticate } = require('./middleware');
 
 const router = Router();
 
-router.get('/', (req, res) => {
+router.get('/', authenticate, (req, res) => {
   const db = getDb();
   const comments = db.prepare('SELECT * FROM comments ORDER BY created_at ASC').all();
   res.json(comments);
 });
 
-router.get('/by-notification/:notificationId', (req, res) => {
+router.get('/by-notification/:notificationId', authenticate, (req, res) => {
   const db = getDb();
   const comments = db.prepare('SELECT * FROM comments WHERE notificationId = ? ORDER BY created_at ASC')
     .all(req.params.notificationId);
   res.json(comments);
 });
 
-router.post('/', (req, res) => {
+router.post('/', authenticate, (req, res) => {
   const db = getDb();
   const { notificationId, userId, userName, userRole, content } = req.body;
   if (!notificationId || !userId || !content) {
@@ -28,7 +29,7 @@ router.post('/', (req, res) => {
   res.status(201).json(comment);
 });
 
-router.put('/:id', (req, res) => {
+router.put('/:id', authenticate, (req, res) => {
   const db = getDb();
   const existing = db.prepare('SELECT * FROM comments WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Commentaire non trouvé' });
@@ -38,14 +39,14 @@ router.put('/:id', (req, res) => {
   res.json(comment);
 });
 
-router.delete('/:id', (req, res) => {
+router.delete('/:id', authenticate, (req, res) => {
   const db = getDb();
   const result = db.prepare('DELETE FROM comments WHERE id = ?').run(req.params.id);
   if (result.changes === 0) return res.status(404).json({ error: 'Commentaire non trouvé' });
   res.json({ ok: true });
 });
 
-router.delete('/by-notification/:notificationId', (req, res) => {
+router.delete('/by-notification/:notificationId', authenticate, (req, res) => {
   const db = getDb();
   db.prepare('DELETE FROM comments WHERE notificationId = ?').run(req.params.notificationId);
   res.json({ ok: true });

@@ -1,22 +1,23 @@
 const { Router } = require('express');
 const { getDb } = require('../database');
+const { authenticate } = require('./middleware');
 
 const router = Router();
 
-router.get('/', (req, res) => {
+router.get('/', authenticate, (req, res) => {
   const db = getDb();
   const songs = db.prepare('SELECT * FROM songs ORDER BY id ASC').all();
   res.json(songs);
 });
 
-router.get('/:id', (req, res) => {
+router.get('/:id', authenticate, (req, res) => {
   const db = getDb();
   const song = db.prepare('SELECT * FROM songs WHERE id = ?').get(req.params.id);
   if (!song) return res.status(404).json({ error: 'Chant non trouvé' });
   res.json(song);
 });
 
-router.post('/', (req, res) => {
+router.post('/', authenticate, (req, res) => {
   const db = getDb();
   const { title, artist, key, tempo, duration, category, notes, lyrics, audio_url } = req.body;
   if (!title) return res.status(400).json({ error: 'Le titre est requis' });
@@ -29,7 +30,7 @@ router.post('/', (req, res) => {
   res.status(201).json(song);
 });
 
-router.put('/:id', (req, res) => {
+router.put('/:id', authenticate, (req, res) => {
   const db = getDb();
   const existing = db.prepare('SELECT * FROM songs WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Chant non trouvé' });
@@ -50,7 +51,7 @@ router.put('/:id', (req, res) => {
   res.json(song);
 });
 
-router.delete('/:id', (req, res) => {
+router.delete('/:id', authenticate, (req, res) => {
   const db = getDb();
   const result = db.prepare('DELETE FROM songs WHERE id = ?').run(req.params.id);
   if (result.changes === 0) return res.status(404).json({ error: 'Chant non trouvé' });

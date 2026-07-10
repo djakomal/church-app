@@ -1,25 +1,9 @@
 const { Router } = require('express');
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+const { requireAdmin } = require('./middleware');
 const { getDb } = require('../database');
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'church-app-secret-key-change-in-production';
-
-function requireAdmin(req, res, next) {
-  const auth = req.headers.authorization;
-  if (!auth) return res.status(401).json({ error: 'Token requis' });
-  try {
-    const decoded = jwt.verify(auth.replace('Bearer ', ''), JWT_SECRET);
-    const db = getDb();
-    const user = db.prepare('SELECT role FROM users WHERE id = ?').get(decoded.userId);
-    if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
-    req.userId = decoded.userId;
-    next();
-  } catch {
-    res.status(401).json({ error: 'Token invalide' });
-  }
-}
 
 router.get('/', requireAdmin, (req, res) => {
   const db = getDb();

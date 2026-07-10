@@ -1,9 +1,10 @@
 const { Router } = require('express');
 const { getDb } = require('../database');
+const { authenticate } = require('./middleware');
 
 const router = Router();
 
-router.get('/', (req, res) => {
+router.get('/', authenticate, (req, res) => {
   const db = getDb();
   const { worshipId, userId } = req.query;
   let records;
@@ -19,7 +20,7 @@ router.get('/', (req, res) => {
   res.json(records.map(r => ({ ...r, confirmed: r.confirmed === 1 })));
 });
 
-router.post('/', (req, res) => {
+router.post('/', authenticate, (req, res) => {
   const db = getDb();
   const { worshipId, userId, userName, confirmed } = req.body;
   if (!worshipId || !userId) return res.status(400).json({ error: 'worshipId et userId requis' });
@@ -37,7 +38,7 @@ router.post('/', (req, res) => {
   res.status(201).json({ ...record, confirmed: record.confirmed === 1 });
 });
 
-router.get('/stats', (req, res) => {
+router.get('/stats', authenticate, (req, res) => {
   const db = getDb();
   const total = db.prepare('SELECT COUNT(*) as count FROM attendance').get();
   const confirmed = db.prepare('SELECT COUNT(*) as count FROM attendance WHERE confirmed = 1').get();

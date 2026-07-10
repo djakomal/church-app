@@ -1,22 +1,23 @@
 const { Router } = require('express');
 const { getDb } = require('../database');
+const { authenticate } = require('./middleware');
 
 const router = Router();
 
-router.get('/', (req, res) => {
+router.get('/', authenticate, (req, res) => {
   const db = getDb();
   const musicians = db.prepare('SELECT * FROM musicians ORDER BY id ASC').all();
   res.json(musicians.map(parseMusician));
 });
 
-router.get('/:id', (req, res) => {
+router.get('/:id', authenticate, (req, res) => {
   const db = getDb();
   const m = db.prepare('SELECT * FROM musicians WHERE id = ?').get(req.params.id);
   if (!m) return res.status(404).json({ error: 'Musicien non trouvé' });
   res.json(parseMusician(m));
 });
 
-router.post('/', (req, res) => {
+router.post('/', authenticate, (req, res) => {
   const db = getDb();
   const { name, email, phone, type, voiceType, instruments, availability, notes } = req.body;
   if (!name) return res.status(400).json({ error: 'Le nom est requis' });
@@ -32,7 +33,7 @@ router.post('/', (req, res) => {
   res.status(201).json(parseMusician(m));
 });
 
-router.put('/:id', (req, res) => {
+router.put('/:id', authenticate, (req, res) => {
   const db = getDb();
   const existing = db.prepare('SELECT * FROM musicians WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Musicien non trouvé' });
@@ -53,7 +54,7 @@ router.put('/:id', (req, res) => {
   res.json(parseMusician(m));
 });
 
-router.delete('/:id', (req, res) => {
+router.delete('/:id', authenticate, (req, res) => {
   const db = getDb();
   const result = db.prepare('DELETE FROM musicians WHERE id = ?').run(req.params.id);
   if (result.changes === 0) return res.status(404).json({ error: 'Musicien non trouvé' });
